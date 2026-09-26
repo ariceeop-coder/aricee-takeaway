@@ -1136,6 +1136,8 @@ const state = {
   authLoading: true,
   authError: '',
   onlineOrders: [],
+  onlineOrderEdits: {},
+  knownOrderIds: null,
   currentSupabaseOrderId: null,
 };
 
@@ -1549,14 +1551,31 @@ function renderOnlineOrders() {
   }
   return `
     <h1 class="pagetitle">Online Orders</h1>
-    ${state.onlineOrders.map(o => `
+    ${state.onlineOrders.map(o => {
+      const items = state.onlineOrderEdits[o.id] || o.items;
+      const total = items.reduce((s, it) => s + it.price * it.qty, 0);
+      return `
       <div class="order-hist-item">
-        <div class="oh-top"><span>#${o.order_no} · ${escapeHtml(o.brand)}</span><span>Rs.${Number(o.total).toFixed(2)}</span></div>
+        <div class="oh-top"><span>#${o.order_no} · ${escapeHtml(o.brand)}</span><span>Rs.${total.toFixed(2)}</span></div>
         <div class="oh-meta">${new Date(o.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
-        <div class="oh-items">${o.items.map(it => `${it.qty}× ${escapeHtml(it.name)}`).join(', ')}</div>
-        <button class="btn-primary" data-accept="${o.id}" style="margin-top:6px;">Accept & Print KOT</button>
+        ${items.map((it, idx) => `
+          <div class="menu-item-row" style="padding:6px 0;">
+            <span class="mname" style="font-size:13px;">${escapeHtml(it.name)}</span>
+            <div class="qtystep" style="color:var(--text);">
+              <button data-oqty="${o.id}:${idx}:-1" class="icon-btn" style="border:1px solid var(--line);border-radius:8px;width:24px;height:24px;padding:0;">−</button>
+              <span>${it.qty}</span>
+              <button data-oqty="${o.id}:${idx}:1" class="icon-btn" style="border:1px solid var(--line);border-radius:8px;width:24px;height:24px;padding:0;">+</button>
+            </div>
+          </div>
+        `).join('')}
+        ${items.length === 0 ? `<p class="helptext">All items removed — Cancel this order instead.</p>` : ''}
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn-secondary" data-cancel-online="${o.id}" style="color:var(--danger);">Cancel</button>
+          <button class="btn-primary" data-accept="${o.id}" ${items.length===0?'disabled':''}>Accept & Print KOT</button>
+        </div>
       </div>
-    `).join('')}
+    `;
+    }).join('')}
   `;
 }
 
@@ -1628,6 +1647,7 @@ function cartBar() {
           </div>
           <div class="cart-actions">
             <button class="btn btn-clear" id="clear-cart">Clear</button>
+            ${state.currentSupabaseOrderId ? `<button class="btn btn-clear" id="cancel-online-order" style="color:#e88;">Cancel Order</button>` : ''}
             <button class="btn btn-kot" id="send-kot">Print KOT</button>
             <button class="btn btn-bill" id="print-bill">Print Bill</button>
           </div>
@@ -1763,6 +1783,8 @@ function attachHandlers() {
   if (discValue) discValue.onchange = () => setDiscount(discType.value, discValue.value);
   const clearBtn = document.getElementById('clear-cart');
   if (clearBtn) clearBtn.onclick = clearCart;
+  const cancelOnlineBtn = document.getElementById('cancel-online-order');
+  if (cancelOnlineBtn) cancelOnlineBtn.onclick = cancelCurrentOnlineOrder;
   const kotBtn = document.getElementById('send-kot');
   if (kotBtn) kotBtn.onclick = sendKOT;
   const billBtn = document.getElementById('print-bill');
@@ -1783,6 +1805,15 @@ function attachHandlers() {
   const addCat = document.getElementById('add-category');
   if (addCat) addCat.onclick = addCategory;
 
+  document.querySelectorAll('[data-oqty]').forEach(el => {
+    el.onclick = () => {
+      const [orderId, idx, delta] = el.dataset.oqty.split(':');
+      changeOnlineItemQty(orderId, parseInt(idx), parseInt(delta));
+    };
+  });
+  document.querySelectorAll('[data-cancel-online]').forEach(el => {
+    el.onclick = () => cancelOnlineOrder(el.dataset.cancelOnline);
+  });
   document.querySelectorAll('[data-accept]').forEach(el => {
     el.onclick = () => {
       const order = state.onlineOrders.find(o => o.id === el.dataset.accept);
@@ -1857,6 +1888,38 @@ async function loadMenuFromSupabase() {
   render();
 }
 
+/* ---------- notification sound ---------- */
+let audioCtx = null;
+function unlockAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+document.addEventListener('click', unlockAudio);
+document.addEventListener('touchstart', unlockAudio);
+
+function playNewOrderSound() {
+  if (state.settings.soundEnabled === false) return;
+  if (!audioCtx) return;
+  const ctx = audioCtx;
+  const now = ctx.currentTime;
+  function tone(freq, start, dur) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = freq;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.0001, now + start);
+    gain.gain.exponentialRampToValueAtTime(0.35, now + start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + start + dur);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now + start);
+    osc.stop(now + start + dur + 0.02);
+  }
+  tone(880, 0, 0.16);
+  tone(1175, 0.18, 0.2);
+}
+
 /* ---------- live incoming orders ---------- */
 function subscribeOnlineOrders() {
   refreshOnlineOrders();
@@ -1869,12 +1932,23 @@ function subscribeOnlineOrders() {
 async function refreshOnlineOrders() {
   const { data, error } = await supa.from('orders').select('*').eq('status', 'pending').order('created_at', { ascending: true });
   if (error) return;
-  state.onlineOrders = data || [];
+  const fresh = data || [];
+  if (state.knownOrderIds === null) {
+    // first load after login: don't sound off for orders that were already pending
+    state.knownOrderIds = new Set(fresh.map(o => o.id));
+  } else {
+    const isNew = fresh.some(o => !state.knownOrderIds.has(o.id));
+    if (isNew) playNewOrderSound();
+    state.knownOrderIds = new Set(fresh.map(o => o.id));
+  }
+  state.onlineOrders = fresh;
   render();
 }
 async function acceptOnlineOrder(order) {
+  const items = state.onlineOrderEdits[order.id] || order.items;
+  if (items.length === 0) return;
   state.brand = order.brand;
-  state.cart = order.items.map(it => ({ itemId: 'online-' + Math.random(), name: it.name, price: it.price, qty: it.qty }));
+  state.cart = items.map(it => ({ itemId: 'online-' + Math.random(), name: it.name, price: it.price, qty: it.qty }));
   state.currentOrderNo = order.order_no;
   state.currentSupabaseOrderId = order.id;
   state.discount = { type: 'flat', value: 0 };
@@ -1883,11 +1957,36 @@ async function acceptOnlineOrder(order) {
   const kotOrder = {
     orderNo: order.order_no,
     time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-    items: order.items
+    items
   };
   doPrint(buildKOTBytes(kotOrder));
-  await supa.from('orders').update({ status: 'accepted' }).eq('id', order.id);
+  const newTotal = items.reduce((s, it) => s + it.price * it.qty, 0);
+  await supa.from('orders').update({ status: 'accepted', items, subtotal: newTotal, total: newTotal }).eq('id', order.id);
+  delete state.onlineOrderEdits[order.id];
   render();
+}
+
+function changeOnlineItemQty(orderId, idx, delta) {
+  const order = state.onlineOrders.find(o => o.id === orderId);
+  if (!order) return;
+  const items = (state.onlineOrderEdits[orderId] || order.items.map(it => ({ ...it }))).slice();
+  items[idx] = { ...items[idx], qty: items[idx].qty + delta };
+  const filtered = items.filter(it => it.qty > 0);
+  state.onlineOrderEdits[orderId] = filtered;
+  render();
+}
+
+async function cancelOnlineOrder(orderId) {
+  if (!confirm('Cancel this order? The customer will see it as cancelled.')) return;
+  await supa.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
+  delete state.onlineOrderEdits[orderId];
+}
+
+async function cancelCurrentOnlineOrder() {
+  if (!state.currentSupabaseOrderId) return;
+  if (!confirm('Cancel this order? The customer will see it as cancelled.')) return;
+  await supa.from('orders').update({ status: 'cancelled' }).eq('id', state.currentSupabaseOrderId);
+  clearCart();
 }
 
 initAuth();
