@@ -1327,7 +1327,12 @@ function bytesToBase64(bytes) {
 function printViaRawBT(bytes) {
   const b64 = bytesToBase64(bytes);
   const url = 'intent:base64,' + b64 + '#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;';
-  window.location.href = url;
+  const a = document.createElement('a');
+  a.href = url;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { if (a.parentNode) a.parentNode.removeChild(a); }, 1000);
 }
 
 /* ---------- printing: Web Bluetooth (BLE) ---------- */
@@ -1904,20 +1909,22 @@ function playNewOrderSound() {
   if (!audioCtx) return;
   const ctx = audioCtx;
   const now = ctx.currentTime;
-  function tone(freq, start, dur) {
+  function note(freq, start, dur, gainPeak) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.frequency.value = freq;
-    osc.type = 'sine';
+    osc.type = 'triangle';
     gain.gain.setValueAtTime(0.0001, now + start);
-    gain.gain.exponentialRampToValueAtTime(0.35, now + start + 0.02);
+    gain.gain.linearRampToValueAtTime(gainPeak, now + start + 0.015);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + start + dur);
     osc.connect(gain).connect(ctx.destination);
     osc.start(now + start);
     osc.stop(now + start + dur + 0.02);
   }
-  tone(880, 0, 0.16);
-  tone(1175, 0.18, 0.2);
+  // soft ascending chime: C5, E5, G5
+  note(523.25, 0, 0.5, 0.28);
+  note(659.25, 0.11, 0.5, 0.26);
+  note(783.99, 0.22, 0.65, 0.24);
 }
 
 /* ---------- live incoming orders ---------- */
