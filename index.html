@@ -97,6 +97,7 @@
     margin-top: 10px;
   }
   .status-line.accepted { color: var(--good); }
+  .status-line.cancelled { color: #B23A2E; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
   .btn-secondary {
     margin-top: 24px; background: var(--surface-2); color: var(--text); border: 1px solid var(--line);
@@ -149,30 +150,34 @@ async function placeOrder() {
   if (state.cart.length === 0 || state.placing) return;
   state.placing = true; render();
   const subtotal = cartTotal();
-  const payload = {
-    brand,
-    items: state.cart.map(c => ({ name: c.name, price: c.price, qty: c.qty })),
-    subtotal, discount_amt: 0, total: subtotal, status: 'pending'
-  };
-  const { data, error } = await supa.from('orders').insert(payload).select().single();
+  const { data, error } = await supa.rpc('place_order', {
+    p_brand: brand,
+    p_items: state.cart.map(c => ({ name: c.name, price: c.price, qty: c.qty })),
+    p_subtotal: subtotal,
+    p_discount_amt: 0,
+    p_total: subtotal
+  });
   state.placing = false;
-  if (error) { alert('Could not place your order — please try again.'); render(); return; }
-  state.placedOrder = data;
+  if (error || !data || !data[0]) { alert('Could not place your order — please try again.'); render(); return; }
+  state.placedOrder = { id: data[0].id, order_no: data[0].order_no, status: 'pending' };
   state.cart = [];
   render();
-  subscribeToOrder(data.id);
+  pollOrderStatus(data[0].id);
 }
 
-function subscribeToOrder(orderId) {
-  supa.channel('order-' + orderId)
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: 'id=eq.' + orderId }, (payload) => {
-      state.placedOrder = payload.new;
+function pollOrderStatus(orderId) {
+  const interval = setInterval(async () => {
+    if (!state.placedOrder || state.placedOrder.id !== orderId) { clearInterval(interval); return; }
+    const { data, error } = await supa.rpc('get_order_status', { p_id: orderId });
+    if (!error && data && data !== state.placedOrder.status) {
+      state.placedOrder = { ...state.placedOrder, status: data };
       render();
-    })
-    .subscribe();
+    }
+  }, 4000);
 }
 
 function statusLabel(s) {
+  if (s === 'cancelled') return { text: 'Order cancelled — please check with the counter', cls: 'cancelled' };
   if (s === 'accepted') return { text: 'Being prepared', cls: 'accepted' };
   if (s === 'billed') return { text: 'Ready — please collect', cls: 'accepted' };
   return { text: 'Order received — waiting for confirmation', cls: '' };
