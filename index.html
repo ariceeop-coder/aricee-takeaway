@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Order Takeaway</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --orange: #C1521B;
+    --orange-dark: #9A3F14;
+    --brown: #3B2415;
+    --bg: #FBF7F1;
+    --surface: #FFFFFF;
+    --surface-2: #F3EAE0;
+    --line: #E5D9C9;
+    --text: #2A1B10;
+    --text-soft: #7A6553;
+    --good: #3E7A4C;
+    --radius: 14px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --bg: #17110C; --surface: #221A12; --surface-2: #2C2117;
+      --line: #3C2E20; --text: #F3E9DD; --text-soft: #B39C87;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-variant-numeric: tabular-nums;
+    padding-top: var(--safe-top); padding-bottom: var(--safe-bottom);
+    -webkit-tap-highlight-color: transparent;
+  }
+  html { scroll-padding-top: var(--safe-top); }
+  #app { max-width: 560px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+  header.topbar {
+    position: sticky; top: var(--safe-top); z-index: 20;
+    background: var(--brown); color: #fff; padding: 16px; text-align: center;
+  }
+  header.topbar h1 { font-size: 17px; font-weight: 800; margin: 0; }
+  header.topbar p { font-size: 12px; color: rgba(255,255,255,.65); margin: 3px 0 0; }
+  main { flex: 1; padding: 14px 14px 130px; }
+  .category { margin-bottom: 20px; }
+  .category h2 {
+    font-size: 13px; font-weight: 700; color: var(--orange-dark);
+    text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px 2px;
+  }
+  .item-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .item-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 12px; text-align: left; cursor: pointer; font-family: inherit; color: var(--text);
+    position: relative;
+  }
+  .item-card .name { font-weight: 600; font-size: 14px; line-height: 1.25; display: block; margin-bottom: 6px; }
+  .item-card .price { font-size: 13px; color: var(--text-soft); font-weight: 600; }
+  .item-card .qtybadge {
+    position: absolute; top: -6px; right: -6px; background: var(--orange); color: #fff;
+    font-size: 12px; font-weight: 700; min-width: 22px; height: 22px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center; padding: 0 5px;
+  }
+  .cartbar { position: fixed; left: 0; right: 0; bottom: var(--safe-bottom); max-width: 560px; margin: 0 auto; z-index: 30; }
+  .cartbar-inner { background: var(--brown); color: #fff; margin: 0 12px 12px; border-radius: 18px; box-shadow: 0 8px 28px rgba(0,0,0,.28); overflow: hidden; }
+  .cart-summary-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; cursor: pointer; }
+  .cart-summary-row .left { font-size: 13.5px; font-weight: 600; color: rgba(255,255,255,.85); }
+  .cart-summary-row .right { font-size: 17px; font-weight: 800; }
+  .cart-detail { max-height: 0; overflow: hidden; transition: max-height .2s ease; background: rgba(0,0,0,.15); }
+  .cart-detail.open { max-height: 420px; overflow-y: auto; }
+  .cart-line { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .cart-line .cname { flex: 1; font-size: 13.5px; font-weight: 600; }
+  .cart-line .cprice { font-size: 12.5px; color: rgba(255,255,255,.6); }
+  .qtystep { display: flex; align-items: center; gap: 8px; }
+  .qtystep button { width: 26px; height: 26px; border-radius: 8px; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; line-height: 1; }
+  .qtystep span { min-width: 16px; text-align: center; font-weight: 700; font-size: 13.5px; }
+  .cart-actions { padding: 12px 14px 14px; }
+  .btn-place {
+    width: 100%; background: var(--orange); color: #fff; border: none; border-radius: 12px;
+    padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+  .btn-place:disabled { opacity: .5; cursor: default; }
+  .empty-state { background: var(--surface); border: 1px dashed var(--line); border-radius: var(--radius); padding: 28px 18px; text-align: center; color: var(--text-soft); font-size: 14px; }
+
+  .confirm-wrap { padding: 60px 20px; text-align: center; }
+  .confirm-badge { font-size: 48px; margin-bottom: 12px; }
+  .confirm-wrap h2 { font-size: 20px; margin: 0 0 6px; }
+  .confirm-wrap .ordno { font-size: 34px; font-weight: 800; color: var(--orange-dark); margin: 10px 0; }
+  .status-line {
+    display: inline-flex; align-items: center; gap: 8px; background: var(--surface-2);
+    padding: 10px 16px; border-radius: 999px; font-size: 13.5px; font-weight: 600; color: var(--text-soft);
+    margin-top: 10px;
+  }
+  .status-line.accepted { color: var(--good); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .btn-secondary {
+    margin-top: 24px; background: var(--surface-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px 18px; font-family: inherit; font-weight: 700; font-size: 14px; cursor: pointer;
+  }
+  .loading { padding: 60px 20px; text-align: center; color: var(--text-soft); }
+</style>
+</head>
+<body>
+<div id="app"><div class="loading">Loading menu…</div></div>
+
+<script>
+const SUPABASE_URL = 'https://dgaurjpzgwyhwilhjowq.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnYXVyanB6Z3d5aHdpbGhqb3dxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NjI1NDYsImV4cCI6MjA5NzQzODU0Nn0.yp7uZXj4-tYTAeuVkvn5sUw7IOv_CZcfkXYHf40rh6E';
+const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const params = new URLSearchParams(location.search);
+const brand = params.get('brand') === 'ChiLane' ? 'Chi Lane' : 'Aricee';
+const brandName = brand === 'Aricee' ? 'Aricee - The Indian Kitchen' : 'Chi Lane Kitchen';
+
+const state = { menu: [], cart: [], cartOpen: false, placedOrder: null, placing: false };
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+async function loadMenu() {
+  const { data, error } = await supa.from('menu_items').select('*').order('sort_order', { ascending: true });
+  if (error) { document.getElementById('app').innerHTML = '<div class="loading">Could not load the menu. Please try again in a moment.</div>'; return; }
+  state.menu = (data || []).filter(m => m.price > 0);
+  render();
+}
+
+function addToCart(item) {
+  const existing = state.cart.find(c => c.itemId === item.id);
+  if (existing) existing.qty += 1;
+  else state.cart.push({ itemId: item.id, name: item.name, price: item.price, qty: 1 });
+  render();
+}
+function changeQty(itemId, delta) {
+  const line = state.cart.find(c => c.itemId === itemId);
+  if (!line) return;
+  line.qty += delta;
+  if (line.qty <= 0) state.cart = state.cart.filter(c => c.itemId !== itemId);
+  render();
+}
+function cartTotal() { return state.cart.reduce((s,c) => s + c.price*c.qty, 0); }
+
+async function placeOrder() {
+  if (state.cart.length === 0 || state.placing) return;
+  state.placing = true; render();
+  const subtotal = cartTotal();
+  const payload = {
+    brand,
+    items: state.cart.map(c => ({ name: c.name, price: c.price, qty: c.qty })),
+    subtotal, discount_amt: 0, total: subtotal, status: 'pending'
+  };
+  const { data, error } = await supa.from('orders').insert(payload).select().single();
+  state.placing = false;
+  if (error) { alert('Could not place your order — please try again.'); render(); return; }
+  state.placedOrder = data;
+  state.cart = [];
+  render();
+  subscribeToOrder(data.id);
+}
+
+function subscribeToOrder(orderId) {
+  supa.channel('order-' + orderId)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: 'id=eq.' + orderId }, (payload) => {
+      state.placedOrder = payload.new;
+      render();
+    })
+    .subscribe();
+}
+
+function statusLabel(s) {
+  if (s === 'accepted') return { text: 'Being prepared', cls: 'accepted' };
+  if (s === 'billed') return { text: 'Ready — please collect', cls: 'accepted' };
+  return { text: 'Order received — waiting for confirmation', cls: '' };
+}
+
+function render() {
+  const app = document.getElementById('app');
+  if (state.placedOrder) {
+    const st = statusLabel(state.placedOrder.status);
+    app.innerHTML = `
+      <header class="topbar"><h1>${escapeHtml(brandName)}</h1><p>Takeaway ordering</p></header>
+      <main>
+        <div class="confirm-wrap">
+          <div class="confirm-badge">✅</div>
+          <h2>Order placed!</h2>
+          <div class="ordno">#${state.placedOrder.order_no}</div>
+          <div class="status-line ${st.cls}"><span class="dot"></span>${st.text}</div>
+          <div><button class="btn-secondary" id="new-order">Place another order</button></div>
+        </div>
+      </main>
+    `;
+    document.getElementById('new-order').onclick = () => { state.placedOrder = null; render(); };
+    return;
+  }
+
+  const cats = [...new Set(state.menu.map(m => m.category))];
+  const total = cartTotal();
+  const count = state.cart.reduce((s,c) => s + c.qty, 0);
+
+  app.innerHTML = `
+    <header class="topbar"><h1>${escapeHtml(brandName)}</h1><p>Tap items to add to your order</p></header>
+    <main>
+      ${cats.length === 0 ? '<div class="empty-state">Menu is being updated — please check back shortly.</div>' :
+        cats.map(cat => `
+          <div class="category">
+            <h2>${escapeHtml(cat)}</h2>
+            <div class="item-grid">
+              ${state.menu.filter(m => m.category === cat).map(item => {
+                const inCart = state.cart.find(c => c.itemId === item.id);
+                return `
+                <button class="item-card" data-add="${item.id}">
+                  ${inCart ? `<span class="qtybadge">${inCart.qty}</span>` : ''}
+                  <span class="name">${escapeHtml(item.name)}</span>
+                  <span class="price">Rs.${Number(item.price).toFixed(2)}</span>
+                </button>`;
+              }).join('')}
+            </div>
+          </div>
+        `).join('')
+      }
+    </main>
+    ${count > 0 ? `
+    <div class="cartbar">
+      <div class="cartbar-inner">
+        <div class="cart-summary-row" id="cart-toggle">
+          <span class="left">${count} item${count>1?'s':''} in cart</span>
+          <span class="right">Rs.${total.toFixed(2)}</span>
+        </div>
+        <div class="cart-detail ${state.cartOpen?'open':''}">
+          ${state.cart.map(c => `
+            <div class="cart-line">
+              <div style="flex:1"><div class="cname">${escapeHtml(c.name)}</div><div class="cprice">Rs.${c.price.toFixed(2)} each</div></div>
+              <div class="qtystep">
+                <button data-qty="${c.itemId}:-1">−</button><span>${c.qty}</span><button data-qty="${c.itemId}:1">+</button>
+              </div>
+            </div>
+          `).join('')}
+          <div class="cart-actions">
+            <button class="btn-place" id="place-order" ${state.placing?'disabled':''}>${state.placing ? 'Placing order…' : 'Place order'}</button>
+          </div>
+        </div>
+      </div>
+    </div>` : ''}
+  `;
+
+  document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
+    const item = state.menu.find(m => m.id === b.dataset.add);
+    if (item) addToCart(item);
+  });
+  const toggle = document.getElementById('cart-toggle');
+  if (toggle) toggle.onclick = () => { state.cartOpen = !state.cartOpen; render(); };
+  document.querySelectorAll('[data-qty]').forEach(b => b.onclick = (e) => {
+    e.stopPropagation();
+    const [id, delta] = b.dataset.qty.split(':');
+    changeQty(id, parseInt(delta));
+  });
+  const placeBtn = document.getElementById('place-order');
+  if (placeBtn) placeBtn.onclick = placeOrder;
+}
+
+loadMenu();
+</script>
+</body>
+</html>
