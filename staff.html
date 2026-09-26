@@ -1,0 +1,1896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Takeaway Billing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --orange: #C1521B;
+    --orange-dark: #9A3F14;
+    --brown: #3B2415;
+    --brown-soft: #6B4A34;
+    --bg: #FBF7F1;
+    --surface: #FFFFFF;
+    --surface-2: #F3EAE0;
+    --line: #E5D9C9;
+    --text: #2A1B10;
+    --text-soft: #7A6553;
+    --danger: #B23A2E;
+    --good: #3E7A4C;
+    --radius: 14px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: border-box;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --bg: #17110C;
+      --surface: #221A12;
+      --surface-2: #2C2117;
+      --line: #3C2E20;
+      --text: #F3E9DD;
+      --text-soft: #B39C87;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17110C;
+    --surface: #221A12;
+    --surface-2: #2C2117;
+    --line: #3C2E20;
+    --text: #F3E9DD;
+    --text-soft: #B39C87;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-variant-numeric: tabular-nums;
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
+    -webkit-tap-highlight-color: transparent;
+  }
+  html { scroll-padding-top: var(--safe-top); }
+
+  #app {
+    max-width: 560px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header.topbar {
+    position: sticky;
+    top: var(--safe-top);
+    z-index: 20;
+    background: var(--brown);
+    color: #fff;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  header.topbar .brandpick {
+    display: flex;
+    background: rgba(255,255,255,.12);
+    border-radius: 999px;
+    padding: 3px;
+  }
+  header.topbar .brandpick button {
+    border: none;
+    background: transparent;
+    color: rgba(255,255,255,.75);
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  header.topbar .brandpick button.active {
+    background: var(--orange);
+    color: #fff;
+  }
+  header.topbar .ordno {
+    font-size: 11.5px;
+    color: rgba(255,255,255,.65);
+    white-space: nowrap;
+  }
+
+  main {
+    flex: 1;
+    padding: 14px 14px 130px;
+  }
+
+  h1.pagetitle {
+    font-size: 20px;
+    font-weight: 800;
+    margin: 4px 0 14px;
+    letter-spacing: -0.01em;
+  }
+
+  .category {
+    margin-bottom: 20px;
+  }
+  .category h2 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--orange-dark);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin: 0 0 8px 2px;
+  }
+  .item-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .item-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--text);
+    position: relative;
+    transition: transform .08s ease;
+  }
+  .item-card:active { transform: scale(0.97); }
+  .item-card .name {
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.25;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .item-card .price {
+    font-size: 13px;
+    color: var(--text-soft);
+    font-weight: 600;
+  }
+  .item-card .qtybadge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: var(--orange);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+  }
+  .item-card.zero-price { opacity: .55; }
+  .item-card .warn {
+    font-size: 10.5px;
+    color: var(--danger);
+    font-weight: 600;
+    display: block;
+    margin-top: 2px;
+  }
+
+  .empty-state {
+    background: var(--surface);
+    border: 1px dashed var(--line);
+    border-radius: var(--radius);
+    padding: 28px 18px;
+    text-align: center;
+    color: var(--text-soft);
+    font-size: 14px;
+  }
+  .empty-state button {
+    margin-top: 12px;
+  }
+
+  /* Cart drawer */
+  .cartbar {
+    position: fixed;
+    left: 0; right: 0;
+    bottom: var(--safe-bottom);
+    max-width: 560px;
+    margin: 0 auto;
+    z-index: 30;
+  }
+  .cartbar-inner {
+    background: var(--brown);
+    color: #fff;
+    margin: 0 12px 12px;
+    border-radius: 18px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.28);
+    overflow: hidden;
+  }
+  .cart-summary-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    cursor: pointer;
+  }
+  .cart-summary-row .left {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: rgba(255,255,255,.85);
+  }
+  .cart-summary-row .right {
+    font-size: 17px;
+    font-weight: 800;
+  }
+  .cart-detail {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .2s ease;
+    background: rgba(0,0,0,.15);
+  }
+  .cart-detail.open { max-height: 420px; overflow-y: auto; }
+  .cart-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .cart-line .cname {
+    flex: 1;
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+  .cart-line .cprice {
+    font-size: 12.5px;
+    color: rgba(255,255,255,.6);
+  }
+  .qtystep {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .qtystep button {
+    width: 26px; height: 26px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.25);
+    background: rgba(255,255,255,.08);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .qtystep span { min-width: 16px; text-align: center; font-weight: 700; font-size: 13.5px; }
+  .cart-actions {
+    display: flex;
+    gap: 8px;
+    padding: 12px 14px 14px;
+  }
+  .btn {
+    font-family: inherit;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    flex: 1;
+  }
+  .btn-kot { background: rgba(255,255,255,.12); color: #fff; }
+  .btn-bill { background: var(--orange); color: #fff; }
+  .btn-clear { background: transparent; color: rgba(255,255,255,.55); flex: 0 0 auto; padding: 12px; }
+
+  /* Bottom nav */
+  nav.tabbar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    max-width: 560px;
+    margin: 0 auto;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    display: flex;
+    padding-bottom: var(--safe-bottom);
+    z-index: 25;
+  }
+  nav.tabbar button {
+    flex: 1;
+    background: none;
+    border: none;
+    font-family: inherit;
+    padding: 10px 4px 8px;
+    color: var(--text-soft);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  nav.tabbar button .ic { display: block; font-size: 18px; margin-bottom: 2px; }
+  nav.tabbar button.active { color: var(--orange); }
+
+  /* Forms */
+  .field {
+    margin-bottom: 14px;
+  }
+  .field label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-soft);
+    margin-bottom: 6px;
+  }
+  .field input, .field select {
+    width: 100%;
+    font-family: inherit;
+    font-size: 15px;
+    padding: 11px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--text);
+  }
+  .row2 { display: flex; gap: 10px; }
+  .row2 > * { flex: 1; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .card h3 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--orange-dark);
+    margin: 0 0 10px;
+  }
+
+  .menu-item-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .menu-item-row:last-child { border-bottom: none; }
+  .menu-item-row .mname { flex: 1; font-size: 14px; font-weight: 600; }
+  .menu-item-row .mprice { width: 84px; }
+  .menu-item-row .mprice input { padding: 8px 9px; font-size: 13.5px; }
+  .icon-btn {
+    background: none;
+    border: none;
+    color: var(--text-soft);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 6px;
+  }
+  .icon-btn.danger { color: var(--danger); }
+
+  .btn-primary {
+    background: var(--orange);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    width: 100%;
+  }
+  .btn-secondary {
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--text-soft);
+  }
+  .status-pill.connected { color: var(--good); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+  .order-hist-item {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .order-hist-item .oh-top {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .order-hist-item .oh-meta {
+    font-size: 12px;
+    color: var(--text-soft);
+    margin-bottom: 8px;
+  }
+  .order-hist-item .oh-items {
+    font-size: 12.5px;
+    color: var(--text-soft);
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(var(--safe-bottom) + 18px);
+    transform: translateX(-50%);
+    background: var(--brown);
+    color: #fff;
+    padding: 11px 18px;
+    border-radius: 999px;
+    font-size: 13.5px;
+    font-weight: 600;
+    box-shadow: 0 6px 20px rgba(0,0,0,.3);
+    z-index: 60;
+    opacity: 0;
+    transition: opacity .2s ease;
+    pointer-events: none;
+    max-width: 85%;
+    text-align: center;
+  }
+  .toast.show { opacity: 1; }
+
+  .helptext {
+    font-size: 12.5px;
+    color: var(--text-soft);
+    line-height: 1.5;
+    margin: 0 0 12px;
+  }
+  a.link { color: var(--orange-dark); font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- supabase ---------- */
+const SUPABASE_URL = 'https://dgaurjpzgwyhwilhjowq.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnYXVyanB6Z3d5aHdpbGhqb3dxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NjI1NDYsImV4cCI6MjA5NzQzODU0Nn0.yp7uZXj4-tYTAeuVkvn5sUw7IOv_CZcfkXYHf40rh6E';
+const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ---------- storage ---------- */
+const DB = {
+  load(key, fallback) {
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+    catch (e) { return fallback; }
+  },
+  save(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
+  }
+};
+
+const DEFAULT_MENU = [
+  {
+    "id": "m1",
+    "category": "Superlight Bowls",
+    "name": "Potato Pops Super Light Rice Bowl",
+    "price": 179
+  },
+  {
+    "id": "m2",
+    "category": "Superlight Bowls",
+    "name": "Soya Chunk Super Light Rice Bowl",
+    "price": 185
+  },
+  {
+    "id": "m3",
+    "category": "Superlight Bowls",
+    "name": "Paneer Pepper Pops Super Light Rice Bowl",
+    "price": 219
+  },
+  {
+    "id": "m4",
+    "category": "Superlight Bowls",
+    "name": "Egg Masala Super Light Rice Bowl",
+    "price": 199
+  },
+  {
+    "id": "m5",
+    "category": "Superlight Bowls",
+    "name": "Grilled Chicken Tikka Super Light Rice Bowl",
+    "price": 219
+  },
+  {
+    "id": "m6",
+    "category": "Superlight Bowls",
+    "name": "Grilled Chicken Ghee Roast Super Light Rice Bowl",
+    "price": 219
+  },
+  {
+    "id": "m7",
+    "category": "Superlight Bowls",
+    "name": "Grilled Naati Chilli Chicken Super Light Rice Bowl",
+    "price": 219
+  },
+  {
+    "id": "m8",
+    "category": "Superlight Bowls",
+    "name": "Potato Pops Super Light Quinoa Bowl",
+    "price": 209
+  },
+  {
+    "id": "m9",
+    "category": "Superlight Bowls",
+    "name": "Soya Chunk Super Light Quinoa Bowl",
+    "price": 209
+  },
+  {
+    "id": "m10",
+    "category": "Superlight Bowls",
+    "name": "Paneer Pepper Pops Super Light Quinoa Bowl",
+    "price": 249
+  },
+  {
+    "id": "m11",
+    "category": "Superlight Bowls",
+    "name": "Egg Masala Super Light Quinoa Bowl",
+    "price": 219
+  },
+  {
+    "id": "m12",
+    "category": "Superlight Bowls",
+    "name": "Grilled Chicken Tikka Super Light Quinoa Bowl",
+    "price": 249
+  },
+  {
+    "id": "m13",
+    "category": "Superlight Bowls",
+    "name": "Grilled Chicken Ghee Roast Super Light Quinoa Bowl",
+    "price": 249
+  },
+  {
+    "id": "m14",
+    "category": "Superlight Bowls",
+    "name": "Grilled Naati Chilli Chicken Super Light Quinoa Bowl",
+    "price": 249
+  },
+  {
+    "id": "m15",
+    "category": "True Rice Bowls (Mini)",
+    "name": "Potato Pops Super Light Rice Bowl (Mini)",
+    "price": 219
+  },
+  {
+    "id": "m16",
+    "category": "True Rice Bowls (Mini)",
+    "name": "Soya Chunk Rice Bowl (Mini)",
+    "price": 219
+  },
+  {
+    "id": "m17",
+    "category": "True Rice Bowls (Mini)",
+    "name": "Paneer Pepper Pops Rice Bowl (Mini)",
+    "price": 259
+  },
+  {
+    "id": "m18",
+    "category": "True Rice Bowls (Mini)",
+    "name": "Egg Masala Rice Bowl (Mini)",
+    "price": 239
+  },
+  {
+    "id": "m19",
+    "category": "True Rice Bowls (Mini)",
+    "name": "Grilled Chicken Tikka Rice Bowl (Mini)",
+    "price": 259
+  },
+  {
+    "id": "m20",
+    "category": "True Rice Bowls (Mini)",
+    "name": "Grilled Chicken Ghee Roast Rice Bowl (Mini)",
+    "price": 259
+  },
+  {
+    "id": "m21",
+    "category": "True Rice Bowls (Mini)",
+    "name": "Grilled Naati Chilli Chicken Rice Bowl (Mini)",
+    "price": 259
+  },
+  {
+    "id": "m22",
+    "category": "True Rice Bowls (Regular)",
+    "name": "Potato Pops Rice Bowl (Regular)",
+    "price": 249
+  },
+  {
+    "id": "m23",
+    "category": "True Rice Bowls (Regular)",
+    "name": "Soya Chunk Rice Bowl (Regular)",
+    "price": 249
+  },
+  {
+    "id": "m24",
+    "category": "True Rice Bowls (Regular)",
+    "name": "Paneer Pepper Pops Rice Bowl (Regular)",
+    "price": 289
+  },
+  {
+    "id": "m25",
+    "category": "True Rice Bowls (Regular)",
+    "name": "Egg Masala Rice Bowl (Regular)",
+    "price": 259
+  },
+  {
+    "id": "m26",
+    "category": "True Rice Bowls (Regular)",
+    "name": "Grilled Chicken Tikka Rice Bowl (Regular)",
+    "price": 289
+  },
+  {
+    "id": "m27",
+    "category": "True Rice Bowls (Regular)",
+    "name": "Grilled Chicken Ghee Roast Rice Bowl (Regular)",
+    "price": 289
+  },
+  {
+    "id": "m28",
+    "category": "True Rice Bowls (Regular)",
+    "name": "Grilled Naati Chilli Chicken Rice Bowl (Regular)",
+    "price": 289
+  },
+  {
+    "id": "m29",
+    "category": "Quinoa Bowls (Mini)",
+    "name": "Potato Pops Quinoa Bowl (Mini)",
+    "price": 259
+  },
+  {
+    "id": "m30",
+    "category": "Quinoa Bowls (Mini)",
+    "name": "Soya Chunk Quinoa Bowl (Mini)",
+    "price": 259
+  },
+  {
+    "id": "m31",
+    "category": "Quinoa Bowls (Mini)",
+    "name": "Paneer Pepper Pops Quinoa Bowl (Mini)",
+    "price": 299
+  },
+  {
+    "id": "m32",
+    "category": "Quinoa Bowls (Mini)",
+    "name": "Egg Masala Quinoa Bowl (Mini)",
+    "price": 269
+  },
+  {
+    "id": "m33",
+    "category": "Quinoa Bowls (Mini)",
+    "name": "Grilled Chicken Tikka Quinoa Bowl (Mini)",
+    "price": 299
+  },
+  {
+    "id": "m34",
+    "category": "Quinoa Bowls (Mini)",
+    "name": "Grilled Chicken Ghee Roast Quinoa Bowl (Mini)",
+    "price": 299
+  },
+  {
+    "id": "m35",
+    "category": "Quinoa Bowls (Mini)",
+    "name": "Grilled Naati Chilli Chicken Quinoa Bowl (Mini)",
+    "price": 299
+  },
+  {
+    "id": "m36",
+    "category": "Quinoa Bowls (Regular)",
+    "name": "Potato Pops Quinoa Bowl (Regular)",
+    "price": 279
+  },
+  {
+    "id": "m37",
+    "category": "Quinoa Bowls (Regular)",
+    "name": "Soya Chunk Quinoa Bowl (Regular)",
+    "price": 279
+  },
+  {
+    "id": "m38",
+    "category": "Quinoa Bowls (Regular)",
+    "name": "Paneer Pepper Pops Quinoa Bowl (Regular)",
+    "price": 309
+  },
+  {
+    "id": "m39",
+    "category": "Quinoa Bowls (Regular)",
+    "name": "Egg Masala Quinoa Bowl (Regular)",
+    "price": 289
+  },
+  {
+    "id": "m40",
+    "category": "Quinoa Bowls (Regular)",
+    "name": "Grilled Chicken Tikka Quinoa Bowl (Regular)",
+    "price": 309
+  },
+  {
+    "id": "m41",
+    "category": "Quinoa Bowls (Regular)",
+    "name": "Grilled Chicken Ghee Roast Quinoa Bowl (Regular)",
+    "price": 309
+  },
+  {
+    "id": "m42",
+    "category": "Quinoa Bowls (Regular)",
+    "name": "Grilled Naati Chilli Chicken Quinoa Bowl (Regular)",
+    "price": 309
+  },
+  {
+    "id": "m43",
+    "category": "Indus Wraps",
+    "name": "Classic Veg Wrap",
+    "price": 215
+  },
+  {
+    "id": "m44",
+    "category": "Indus Wraps",
+    "name": "Paneer Pepper Pops Indus Wrap",
+    "price": 251
+  },
+  {
+    "id": "m45",
+    "category": "Indus Wraps",
+    "name": "Grilled Chicken Tikka Indus Wrap",
+    "price": 251
+  },
+  {
+    "id": "m46",
+    "category": "Indus Wraps",
+    "name": "Grilled Chicken Ghee Roast Indus Wrap",
+    "price": 251
+  },
+  {
+    "id": "m47",
+    "category": "Indus Wraps",
+    "name": "Grilled Naati Chilli Chicken Indus Wrap",
+    "price": 251
+  },
+  {
+    "id": "m48",
+    "category": "Fermented Rice Kanji Bowl (Mini)",
+    "name": "Potato Pops Fermented Rice Kanji Bowl (Mini)",
+    "price": 239
+  },
+  {
+    "id": "m49",
+    "category": "Fermented Rice Kanji Bowl (Mini)",
+    "name": "Soya Chunk Fermented Rice Kanji Bowl (Mini)",
+    "price": 239
+  },
+  {
+    "id": "m50",
+    "category": "Fermented Rice Kanji Bowl (Mini)",
+    "name": "Paneer Pepper Pops Fermented Rice Kanji Bowl (Mini)",
+    "price": 269
+  },
+  {
+    "id": "m51",
+    "category": "Fermented Rice Kanji Bowl (Mini)",
+    "name": "Egg Masala Fermented Rice Kanji Bowl (Mini)",
+    "price": 259
+  },
+  {
+    "id": "m52",
+    "category": "Fermented Rice Kanji Bowl (Mini)",
+    "name": "Grilled Chicken Tikka Fermented Rice Kanji Bowl (Mini)",
+    "price": 269
+  },
+  {
+    "id": "m53",
+    "category": "Fermented Rice Kanji Bowl (Mini)",
+    "name": "Grilled Chicken Ghee Roast Fermented Rice Kanji Bowl (Mini)",
+    "price": 269
+  },
+  {
+    "id": "m54",
+    "category": "Fermented Rice Kanji Bowl (Mini)",
+    "name": "Grilled Naati Chilli Chicken Fermented Rice Kanji Bowl (Mini)",
+    "price": 269
+  },
+  {
+    "id": "m55",
+    "category": "Fermented Rice Kanji Bowl (Regular)",
+    "name": "Potato Pops Fermented Rice Kanji Bowl (Regular)",
+    "price": 269
+  },
+  {
+    "id": "m56",
+    "category": "Fermented Rice Kanji Bowl (Regular)",
+    "name": "Soya Chunk Fermented Rice Kanji Bowl (Regular)",
+    "price": 269
+  },
+  {
+    "id": "m57",
+    "category": "Fermented Rice Kanji Bowl (Regular)",
+    "name": "Paneer Pepper Pops Fermented Rice Kanji Bowl (Regular)",
+    "price": 299
+  },
+  {
+    "id": "m58",
+    "category": "Fermented Rice Kanji Bowl (Regular)",
+    "name": "Egg Masala Fermented Rice Kanji Bowl (Regular)",
+    "price": 279
+  },
+  {
+    "id": "m59",
+    "category": "Fermented Rice Kanji Bowl (Regular)",
+    "name": "Grilled Chicken Tikka Fermented Rice Kanji Bowl (Regular)",
+    "price": 299
+  },
+  {
+    "id": "m60",
+    "category": "Fermented Rice Kanji Bowl (Regular)",
+    "name": "Grilled Chicken Ghee Roast Fermented Rice Kanji Bowl (Regular)",
+    "price": 299
+  },
+  {
+    "id": "m61",
+    "category": "Fermented Rice Kanji Bowl (Regular)",
+    "name": "Grilled Naati Chilli Chicken Fermented Rice Kanji Bowl (Regular)",
+    "price": 299
+  },
+  {
+    "id": "m62",
+    "category": "Foxtail Kanji Bowl (Mini)",
+    "name": "Potato Pops Foxtail Kanji Bowl (Mini)",
+    "price": 229
+  },
+  {
+    "id": "m63",
+    "category": "Foxtail Kanji Bowl (Mini)",
+    "name": "Soya Chunk Foxtail Kanji Bowl (Mini)",
+    "price": 229
+  },
+  {
+    "id": "m64",
+    "category": "Foxtail Kanji Bowl (Mini)",
+    "name": "Paneer Pepper Pops Foxtail Kanji Bowl (Mini)",
+    "price": 259
+  },
+  {
+    "id": "m65",
+    "category": "Foxtail Kanji Bowl (Mini)",
+    "name": "Egg Masala Foxtail Kanji Bowl (Mini)",
+    "price": 239
+  },
+  {
+    "id": "m66",
+    "category": "Foxtail Kanji Bowl (Mini)",
+    "name": "Grilled Chicken Tikka Foxtail Kanji Bowl (Mini)",
+    "price": 259
+  },
+  {
+    "id": "m67",
+    "category": "Foxtail Kanji Bowl (Mini)",
+    "name": "Grilled Chicken Ghee Roast Foxtail Kanji Bowl (Mini)",
+    "price": 259
+  },
+  {
+    "id": "m68",
+    "category": "Foxtail Kanji Bowl (Mini)",
+    "name": "Grilled Naati Chilli Chicken Foxtail Kanji Bowl (Mini)",
+    "price": 259
+  },
+  {
+    "id": "m69",
+    "category": "Foxtail Kanji Bowl (Regular)",
+    "name": "Potato Pops Foxtail Kanji Bowl (Regular)",
+    "price": 259
+  },
+  {
+    "id": "m70",
+    "category": "Foxtail Kanji Bowl (Regular)",
+    "name": "Soya Chunk Foxtail Kanji Bowl (Regular)",
+    "price": 259
+  },
+  {
+    "id": "m71",
+    "category": "Foxtail Kanji Bowl (Regular)",
+    "name": "Paneer Pepper Pops Foxtail Kanji Bowl (Regular)",
+    "price": 289
+  },
+  {
+    "id": "m72",
+    "category": "Foxtail Kanji Bowl (Regular)",
+    "name": "Egg Masala Foxtail Kanji Bowl (Regular)",
+    "price": 269
+  },
+  {
+    "id": "m73",
+    "category": "Foxtail Kanji Bowl (Regular)",
+    "name": "Grilled Chicken Tikka Foxtail Kanji Bowl (Regular)",
+    "price": 289
+  },
+  {
+    "id": "m74",
+    "category": "Foxtail Kanji Bowl (Regular)",
+    "name": "Grilled Chicken Ghee Roast Foxtail Kanji Bowl (Regular)",
+    "price": 289
+  },
+  {
+    "id": "m75",
+    "category": "Foxtail Kanji Bowl (Regular)",
+    "name": "Grilled Naati Chilli Chicken Foxtail Kanji Bowl (Regular)",
+    "price": 289
+  },
+  {
+    "id": "m76",
+    "category": "Fresh Salads",
+    "name": "Channa Salad",
+    "price": 125
+  },
+  {
+    "id": "m77",
+    "category": "Fresh Salads",
+    "name": "Quinoa Classic Salad",
+    "price": 205
+  },
+  {
+    "id": "m78",
+    "category": "Fresh Salads",
+    "name": "Paneer Quinoa Salad",
+    "price": 235
+  },
+  {
+    "id": "m79",
+    "category": "Fresh Salads",
+    "name": "Chicken Tikka Quinoa Salad",
+    "price": 235
+  },
+  {
+    "id": "m80",
+    "category": "Fresh Salads",
+    "name": "Chicken Ghee Roast Quinoa Salad",
+    "price": 235
+  },
+  {
+    "id": "m81",
+    "category": "Fresh Salads",
+    "name": "Naati Chilli Chicken Quinoa Salad",
+    "price": 235
+  },
+  {
+    "id": "m82",
+    "category": "Lite Bites",
+    "name": "Rice papadi Chaat",
+    "price": 143
+  },
+  {
+    "id": "m83",
+    "category": "Lite Bites",
+    "name": "Paneer Bao",
+    "price": 227
+  },
+  {
+    "id": "m84",
+    "category": "Lite Bites",
+    "name": "Chicken Bao",
+    "price": 227
+  },
+  {
+    "id": "m85",
+    "category": "Lite Bites",
+    "name": "Grilled Paneer Pocket",
+    "price": 215
+  },
+  {
+    "id": "m86",
+    "category": "Lite Bites",
+    "name": "Grilled Chicken Pocket",
+    "price": 215
+  },
+  {
+    "id": "m87",
+    "category": "Aricee Combos",
+    "name": "Chicken Tikka Wrap + Peach Ice Tea",
+    "price": 235
+  },
+  {
+    "id": "m88",
+    "category": "Aricee Combos",
+    "name": "Grilled Chicken Ghee Roast Foxtail Kanji (Regular) + Peach Ice Tea",
+    "price": 319
+  },
+  {
+    "id": "m89",
+    "category": "Aricee Combos",
+    "name": "Naati Chilli Chicken Quinoa Salad + Diet Coke",
+    "price": 269
+  },
+  {
+    "id": "m90",
+    "category": "Aricee Combos",
+    "name": "Naati Chilli Chicken Rice Bowl (Regular) + Mango Delight",
+    "price": 335
+  },
+  {
+    "id": "m91",
+    "category": "Aricee Combos",
+    "name": "Paneer Pepper Pops Rice Bowl (Regular) + Jaljeera",
+    "price": 315
+  },
+  {
+    "id": "m92",
+    "category": "Aricee Combos",
+    "name": "Soya Chunks Quinoa Bowl (Regular) + Masala Chaas",
+    "price": 269
+  },
+  {
+    "id": "m93",
+    "category": "Deserts",
+    "name": "Aval",
+    "price": 79
+  },
+  {
+    "id": "m94",
+    "category": "Immunity Soups",
+    "name": "Tomato Shorba",
+    "price": 139
+  },
+  {
+    "id": "m95",
+    "category": "Immunity Soups",
+    "name": "Chicken Milagu Charu",
+    "price": 179
+  },
+  {
+    "id": "m96",
+    "category": "Beverages",
+    "name": "Masala Chaas",
+    "price": 49
+  },
+  {
+    "id": "m97",
+    "category": "Beverages",
+    "name": "Jaljeera",
+    "price": 49
+  },
+  {
+    "id": "m98",
+    "category": "Beverages",
+    "name": "Mango Delight",
+    "price": 69
+  },
+  {
+    "id": "m99",
+    "category": "Beverages",
+    "name": "Peach Ice Tea",
+    "price": 69
+  },
+  {
+    "id": "m100",
+    "category": "Beverages",
+    "name": "Diet Coke",
+    "price": 65
+  },
+  {
+    "id": "m101",
+    "category": "Beverages",
+    "name": "Water Bottle",
+    "price": 15
+  }
+];
+
+const MENU_VERSION = 2; // bump this whenever a fresh menu is pushed, so devices pick it up
+
+function loadMenu() {
+  const storedVersion = DB.load('billing_menu_version', 0);
+  if (storedVersion < MENU_VERSION) return DEFAULT_MENU;
+  return DB.load('billing_menu', DEFAULT_MENU);
+}
+
+const state = {
+  tab: 'order',
+  brand: DB.load('billing_brand', 'Aricee'),
+  menu: loadMenu(),
+  settings: DB.load('billing_settings', {
+    aricee_name: 'Aricee - The Indian Kitchen',
+    chilane_name: 'Chi Lane Kitchen',
+    gstin: '',
+    gstEnabled: false,
+    cgst: 2.5,
+    sgst: 2.5,
+    paperWidth: 32, // chars per line, 32 for 58mm, 42-48 for 80mm
+    bleDeviceName: ''
+  }),
+  cart: DB.load('billing_cart', []), // [{itemId, name, price, qty}]
+  discount: DB.load('billing_discount', { type: 'flat', value: 0 }),
+  orders: DB.load('billing_orders', []),
+  counter: DB.load('billing_counter', { date: '', n: 0 }),
+  cartOpen: false,
+  currentOrderNo: DB.load('billing_current_order_no', null),
+  bleDevice: null,
+  bleChar: null,
+  session: null,
+  authLoading: true,
+  authError: '',
+  onlineOrders: [],
+  currentSupabaseOrderId: null,
+};
+
+function persist() {
+  DB.save('billing_brand', state.brand);
+  DB.save('billing_menu', state.menu);
+  DB.save('billing_menu_version', MENU_VERSION);
+  DB.save('billing_settings', state.settings);
+  DB.save('billing_cart', state.cart);
+  DB.save('billing_discount', state.discount);
+  DB.save('billing_orders', state.orders);
+  DB.save('billing_counter', state.counter);
+  DB.save('billing_current_order_no', state.currentOrderNo);
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._h);
+  toast._h = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+}
+
+function nextOrderNo() {
+  const t = todayStr();
+  if (state.counter.date !== t) { state.counter = { date: t, n: 0 }; }
+  state.counter.n += 1;
+  persist();
+  return state.counter.n;
+}
+
+/* ---------- cart ops ---------- */
+function addToCart(item) {
+  const existing = state.cart.find(c => c.itemId === item.id);
+  if (existing) existing.qty += 1;
+  else state.cart.push({ itemId: item.id, name: item.name, price: item.price, qty: 1 });
+  persist();
+  render();
+}
+function changeQty(itemId, delta) {
+  const line = state.cart.find(c => c.itemId === itemId);
+  if (!line) return;
+  line.qty += delta;
+  if (line.qty <= 0) state.cart = state.cart.filter(c => c.itemId !== itemId);
+  persist();
+  render();
+}
+function clearCart() {
+  state.cart = [];
+  state.currentOrderNo = null;
+  state.currentSupabaseOrderId = null;
+  state.discount = { type: 'flat', value: 0 };
+  persist();
+  render();
+}
+function setDiscount(type, value) {
+  state.discount = { type, value: Math.max(0, parseFloat(value) || 0) };
+  persist();
+  render();
+}
+function cartTotals() {
+  const subtotal = state.cart.reduce((s,c) => s + c.price * c.qty, 0);
+  let discountAmt = state.discount.type === 'percent'
+    ? subtotal * (state.discount.value / 100)
+    : state.discount.value;
+  discountAmt = Math.min(Math.max(discountAmt, 0), subtotal);
+  const taxable = subtotal - discountAmt;
+  const gstOn = !!state.settings.gstEnabled;
+  const cgstAmt = gstOn ? taxable * (state.settings.cgst/100) : 0;
+  const sgstAmt = gstOn ? taxable * (state.settings.sgst/100) : 0;
+  const total = taxable + cgstAmt + sgstAmt;
+  return { subtotal, discountAmt, cgstAmt, sgstAmt, total };
+}
+
+/* ---------- ESC/POS building ---------- */
+function esc(bytes) { return new Uint8Array(bytes); }
+function textToBytes(str) {
+  return Array.from(new TextEncoder().encode(str));
+}
+function padLine(left, right, width) {
+  left = left || ''; right = right || '';
+  const space = Math.max(1, width - left.length - right.length);
+  if (left.length + right.length >= width) {
+    left = left.slice(0, Math.max(0, width - right.length - 1));
+  }
+  return left + ' '.repeat(width - left.length - right.length) + right;
+}
+function centerLine(str, width) {
+  if (str.length >= width) return str.slice(0, width);
+  const pad = Math.floor((width - str.length) / 2);
+  return ' '.repeat(pad) + str;
+}
+function wrapText(str, width) {
+  const words = str.split(' ');
+  const lines = [];
+  let cur = '';
+  words.forEach(w => {
+    if ((cur + ' ' + w).trim().length > width) { lines.push(cur.trim()); cur = w; }
+    else cur = (cur + ' ' + w).trim();
+  });
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+function buildKOTBytes(order) {
+  const w = state.settings.paperWidth;
+  const bytes = [];
+  const push = arr => arr.forEach(b => bytes.push(b));
+  push([0x1B, 0x40]); // init
+  push([0x1B, 0x61, 0x01]); // center
+  push([0x1D, 0x21, 0x11]); // double size
+  push(textToBytes('KOT\n'));
+  push([0x1D, 0x21, 0x00]); // normal size
+  push(textToBytes(centerLine('TAKEAWAY', w) + '\n'));
+  push([0x1B, 0x61, 0x00]); // left
+  push(textToBytes('-'.repeat(w) + '\n'));
+  push(textToBytes(padLine('Order #' + order.orderNo, order.time, w) + '\n'));
+  push(textToBytes('-'.repeat(w) + '\n'));
+  order.items.forEach(it => {
+    const lines = wrapText(it.name, w - 5);
+    lines.forEach((ln, idx) => {
+      if (idx === 0) push(textToBytes(padLine(ln, '', w - 5) + '  x' + it.qty + '\n'));
+      else push(textToBytes(ln + '\n'));
+    });
+  });
+  push(textToBytes('-'.repeat(w) + '\n'));
+  push(textToBytes('\n\n\n'));
+  return bytes;
+}
+
+function buildBillBytes(order, totals) {
+  const w = state.settings.paperWidth;
+  const bytes = [];
+  const push = arr => arr.forEach(b => bytes.push(b));
+  const brandName = order.brand === 'Aricee' ? state.settings.aricee_name : state.settings.chilane_name;
+  push([0x1B, 0x40]);
+  push([0x1B, 0x61, 0x01]);
+  push([0x1B, 0x45, 0x01]);
+  wrapText(brandName, w).forEach(ln => push(textToBytes(ln + '\n')));
+  push([0x1B, 0x45, 0x00]);
+  push(textToBytes('Takeaway Bill\n'));
+  if (state.settings.gstEnabled && state.settings.gstin) push(textToBytes('GSTIN: ' + state.settings.gstin + '\n'));
+  push([0x1B, 0x61, 0x00]);
+  push(textToBytes('-'.repeat(w) + '\n'));
+  push(textToBytes(padLine('Bill #' + order.orderNo, order.time, w) + '\n'));
+  push(textToBytes(order.date + '\n'));
+  push(textToBytes('-'.repeat(w) + '\n'));
+  order.items.forEach(it => {
+    const lineTotal = (it.price * it.qty).toFixed(2);
+    const label = it.name + ' x' + it.qty;
+    const lines = wrapText(label, w - (lineTotal.length + 1));
+    lines.forEach((ln, idx) => {
+      if (idx === lines.length - 1) push(textToBytes(padLine(ln, 'Rs.' + lineTotal, w) + '\n'));
+      else push(textToBytes(ln + '\n'));
+    });
+  });
+  push(textToBytes('-'.repeat(w) + '\n'));
+  push(textToBytes(padLine('Subtotal', 'Rs.' + totals.subtotal.toFixed(2), w) + '\n'));
+  if (totals.discountAmt > 0) {
+    push(textToBytes(padLine('Discount', '-Rs.' + totals.discountAmt.toFixed(2), w) + '\n'));
+  }
+  if (state.settings.gstEnabled) {
+    push(textToBytes(padLine('CGST ' + state.settings.cgst + '%', 'Rs.' + totals.cgstAmt.toFixed(2), w) + '\n'));
+    push(textToBytes(padLine('SGST ' + state.settings.sgst + '%', 'Rs.' + totals.sgstAmt.toFixed(2), w) + '\n'));
+  }
+  push(textToBytes('-'.repeat(w) + '\n'));
+  push([0x1D, 0x21, 0x01]);
+  push(textToBytes(padLine('TOTAL', 'Rs.' + totals.total.toFixed(2), Math.floor(w*0.85)) + '\n'));
+  push([0x1D, 0x21, 0x00]);
+  push(textToBytes('-'.repeat(w) + '\n'));
+  push([0x1B, 0x61, 0x01]);
+  push(textToBytes('Traditionally Nutritious!\n\n\n'));
+  return bytes;
+}
+
+/* ---------- printing: RawBT bridge ---------- */
+function bytesToBase64(bytes) {
+  let binary = '';
+  bytes.forEach(b => binary += String.fromCharCode(b));
+  return btoa(binary);
+}
+function printViaRawBT(bytes) {
+  const b64 = bytesToBase64(bytes);
+  const url = 'intent:base64,' + b64 + '#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;';
+  window.location.href = url;
+}
+
+/* ---------- printing: Web Bluetooth (BLE) ---------- */
+const BLE_CANDIDATE_SERVICES = [
+  '000018f0-0000-1000-8000-00805f9b34fb',
+  '0000ff00-0000-1000-8000-00805f9b34fb',
+  '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+  'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+];
+async function connectBLE() {
+  if (!navigator.bluetooth) { toast('This browser does not support Bluetooth printing. Try RawBT instead.'); return; }
+  try {
+    const device = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: BLE_CANDIDATE_SERVICES
+    });
+    const server = await device.gatt.connect();
+    let foundChar = null;
+    const services = await server.getPrimaryServices();
+    for (const svc of services) {
+      const chars = await svc.getCharacteristics();
+      const writable = chars.find(c => c.properties.writeWithoutResponse || c.properties.write);
+      if (writable) { foundChar = writable; break; }
+    }
+    if (!foundChar) { toast('Connected, but no printable service found. Try RawBT instead.'); return; }
+    state.bleDevice = device;
+    state.bleChar = foundChar;
+    state.settings.bleDeviceName = device.name || 'Printer';
+    persist();
+    toast('Connected to ' + state.settings.bleDeviceName);
+    render();
+  } catch (e) {
+    toast('Bluetooth connection cancelled or failed.');
+  }
+}
+async function printViaBLE(bytes) {
+  if (!state.bleChar) { toast('No printer connected.'); return false; }
+  try {
+    const chunkSize = 20;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = new Uint8Array(bytes.slice(i, i + chunkSize));
+      if (state.bleChar.properties.writeWithoutResponse) await state.bleChar.writeValueWithoutResponse(chunk);
+      else await state.bleChar.writeValue(chunk);
+      await new Promise(r => setTimeout(r, 20));
+    }
+    return true;
+  } catch (e) {
+    toast('Print failed: ' + e.message);
+    return false;
+  }
+}
+
+async function doPrint(bytes) {
+  if (state.bleChar) {
+    const ok = await printViaBLE(bytes);
+    if (ok) { toast('Sent to printer.'); return; }
+  }
+  printViaRawBT(bytes);
+}
+
+/* ---------- order actions ---------- */
+function sendKOT() {
+  if (state.cart.length === 0) { toast('Cart is empty.'); return; }
+  if (!state.currentOrderNo) state.currentOrderNo = nextOrderNo();
+  const order = {
+    orderNo: state.currentOrderNo,
+    brand: state.brand,
+    time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+    items: state.cart.map(c => ({ name: c.name, qty: c.qty, price: c.price }))
+  };
+  doPrint(buildKOTBytes(order));
+  persist();
+}
+function printBillAndCheckout() {
+  if (state.cart.length === 0) { toast('Cart is empty.'); return; }
+  if (!state.currentOrderNo) state.currentOrderNo = nextOrderNo();
+  const totals = cartTotals();
+  const now = new Date();
+  const order = {
+    orderNo: state.currentOrderNo,
+    brand: state.brand,
+    date: now.toLocaleDateString('en-IN'),
+    time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+    items: state.cart.map(c => ({ name: c.name, qty: c.qty, price: c.price })),
+    ...totals
+  };
+  doPrint(buildBillBytes(order, totals));
+  state.orders.unshift(order);
+  if (state.currentSupabaseOrderId) {
+    supa.from('orders').update({ status: 'billed' }).eq('id', state.currentSupabaseOrderId);
+  }
+  state.cart = [];
+  state.currentOrderNo = null;
+  state.currentSupabaseOrderId = null;
+  state.discount = { type: 'flat', value: 0 };
+  persist();
+  render();
+  toast('Bill printed & saved to history.');
+}
+
+/* ---------- menu editing ---------- */
+function addMenuItem(category) {
+  const name = prompt('Item name:');
+  if (!name) return;
+  const price = parseFloat(prompt('Price (Rs.):', '0')) || 0;
+  const id = 'm' + Date.now();
+  state.menu.push({ id, category, name, price });
+  persist();
+  render();
+  supa.from('menu_items').insert({ id, category, name, price, sort_order: state.menu.length });
+}
+function editMenuPrice(id, val) {
+  const item = state.menu.find(m => m.id === id);
+  if (item) {
+    item.price = parseFloat(val) || 0;
+    persist();
+    supa.from('menu_items').update({ price: item.price }).eq('id', id);
+  }
+}
+function renameMenuItem(id) {
+  const item = state.menu.find(m => m.id === id);
+  if (!item) return;
+  const name = prompt('Rename item:', item.name);
+  if (name) {
+    item.name = name; persist(); render();
+    supa.from('menu_items').update({ name }).eq('id', id);
+  }
+}
+function deleteMenuItem(id) {
+  if (!confirm('Remove this item?')) return;
+  state.menu = state.menu.filter(m => m.id !== id);
+  persist();
+  render();
+  supa.from('menu_items').delete().eq('id', id);
+}
+function addCategory() {
+  const cat = prompt('New category name:');
+  if (!cat) return;
+  addMenuItem(cat);
+}
+
+/* ---------- render ---------- */
+function render() {
+  const app = document.getElementById('app');
+  if (state.authLoading) {
+    app.innerHTML = `<div class="loading" style="padding:60px 20px;text-align:center;color:var(--text-soft);">Loading…</div>`;
+    return;
+  }
+  if (!state.session) {
+    app.innerHTML = renderLogin();
+    attachLoginHandlers();
+    return;
+  }
+  app.innerHTML = `
+    ${topbar()}
+    <main>${renderTab()}</main>
+    ${state.tab === 'order' ? cartBar() : ''}
+    ${tabbar()}
+  `;
+  attachHandlers();
+}
+
+function renderLogin() {
+  return `
+    <div style="max-width:360px;margin:80px auto 0;padding:0 20px;">
+      <h1 class="pagetitle" style="text-align:center;">Staff Login</h1>
+      <div class="card">
+        <div class="field"><label>Email</label><input type="email" id="login-email" autocomplete="username"></div>
+        <div class="field"><label>Password</label><input type="password" id="login-password" autocomplete="current-password"></div>
+        ${state.authError ? `<p class="helptext" style="color:var(--danger);">${escapeHtml(state.authError)}</p>` : ''}
+        <button class="btn-primary" id="login-btn">Log in</button>
+      </div>
+    </div>
+  `;
+}
+function attachLoginHandlers() {
+  const btn = document.getElementById('login-btn');
+  if (btn) btn.onclick = () => {
+    doLogin(document.getElementById('login-email').value, document.getElementById('login-password').value);
+  };
+}
+
+function topbar() {
+  return `
+    <header class="topbar">
+      <div class="brandpick">
+        <button data-brand="Aricee" class="${state.brand==='Aricee'?'active':''}">Aricee</button>
+        <button data-brand="Chi Lane" class="${state.brand==='Chi Lane'?'active':''}">Chi Lane</button>
+      </div>
+      <div class="ordno">${state.currentOrderNo ? 'Order #' + state.currentOrderNo : 'New order'}</div>
+    </header>
+  `;
+}
+
+function tabbar() {
+  const tabs = [
+    { id: 'order', label: 'Order', ic: '🧾' },
+    { id: 'orders', label: 'Online', ic: '📥', badge: state.onlineOrders.length },
+    { id: 'menu', label: 'Menu', ic: '🍲' },
+    { id: 'history', label: 'History', ic: '🕘' },
+    { id: 'settings', label: 'Settings', ic: '⚙' },
+  ];
+  return `<nav class="tabbar">${tabs.map(t => `
+    <button data-tab="${t.id}" class="${state.tab===t.id?'active':''}" style="position:relative;">
+      <span class="ic">${t.ic}</span>${t.label}
+      ${t.badge ? `<span class="qtybadge" style="position:absolute;top:2px;right:14%;">${t.badge}</span>` : ''}
+    </button>`).join('')}</nav>`;
+}
+
+function renderTab() {
+  if (state.tab === 'order') return renderOrder();
+  if (state.tab === 'orders') return renderOnlineOrders();
+  if (state.tab === 'menu') return renderMenu();
+  if (state.tab === 'history') return renderHistory();
+  if (state.tab === 'settings') return renderSettings();
+}
+
+function renderOnlineOrders() {
+  if (state.onlineOrders.length === 0) {
+    return `<h1 class="pagetitle">Online Orders</h1><div class="empty-state">No new online orders right now.</div>`;
+  }
+  return `
+    <h1 class="pagetitle">Online Orders</h1>
+    ${state.onlineOrders.map(o => `
+      <div class="order-hist-item">
+        <div class="oh-top"><span>#${o.order_no} · ${escapeHtml(o.brand)}</span><span>Rs.${Number(o.total).toFixed(2)}</span></div>
+        <div class="oh-meta">${new Date(o.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
+        <div class="oh-items">${o.items.map(it => `${it.qty}× ${escapeHtml(it.name)}`).join(', ')}</div>
+        <button class="btn-primary" data-accept="${o.id}" style="margin-top:6px;">Accept & Print KOT</button>
+      </div>
+    `).join('')}
+  `;
+}
+
+function renderOrder() {
+  const cats = [...new Set(state.menu.map(m => m.category))];
+  if (cats.length === 0) {
+    return `<div class="empty-state">No menu items yet.<br><button class="btn-primary" id="go-menu" style="margin-top:12px;width:auto;padding:10px 18px;">Add items</button></div>`;
+  }
+  return cats.map(cat => `
+    <div class="category">
+      <h2>${cat}</h2>
+      <div class="item-grid">
+        ${state.menu.filter(m => m.category === cat).map(item => {
+          const inCart = state.cart.find(c => c.itemId === item.id);
+          return `
+          <button class="item-card ${item.price===0?'zero-price':''}" data-add="${item.id}">
+            ${inCart ? `<span class="qtybadge">${inCart.qty}</span>` : ''}
+            <span class="name">${escapeHtml(item.name)}</span>
+            <span class="price">${item.price>0 ? 'Rs.'+item.price.toFixed(2) : 'No price set'}</span>
+          </button>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function cartBar() {
+  const totals = cartTotals();
+  const count = state.cart.reduce((s,c) => s + c.qty, 0);
+  if (count === 0) return '';
+  return `
+    <div class="cartbar">
+      <div class="cartbar-inner">
+        <div class="cart-summary-row" id="cart-toggle">
+          <span class="left">${count} item${count>1?'s':''} in cart</span>
+          <span class="right">Rs.${totals.total.toFixed(2)}</span>
+        </div>
+        <div class="cart-detail ${state.cartOpen?'open':''}">
+          ${state.cart.map(c => `
+            <div class="cart-line">
+              <div style="flex:1">
+                <div class="cname">${escapeHtml(c.name)}</div>
+                <div class="cprice">Rs.${c.price.toFixed(2)} each</div>
+              </div>
+              <div class="qtystep">
+                <button data-qty="${c.itemId}:-1">−</button>
+                <span>${c.qty}</span>
+                <button data-qty="${c.itemId}:1">+</button>
+              </div>
+            </div>
+          `).join('')}
+          <div class="cart-line discount-row">
+            <div style="flex:1">
+              <div class="cname">Discount</div>
+              <div class="cprice">${totals.discountAmt > 0 ? '−Rs.' + totals.discountAmt.toFixed(2) : 'none applied'}</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <select id="disc-type" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px;font-size:12.5px;">
+                <option value="flat" ${state.discount.type==='flat'?'selected':''}>Rs.</option>
+                <option value="percent" ${state.discount.type==='percent'?'selected':''}>%</option>
+              </select>
+              <input id="disc-value" type="number" min="0" step="0.01" value="${state.discount.value || ''}" placeholder="0"
+                style="width:64px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px 8px;font-size:13px;">
+            </div>
+          </div>
+          <div class="cart-line" style="border-bottom:none;">
+            <div class="cname">Subtotal</div>
+            <div class="cprice">Rs.${totals.subtotal.toFixed(2)}</div>
+          </div>
+          <div class="cart-actions">
+            <button class="btn btn-clear" id="clear-cart">Clear</button>
+            <button class="btn btn-kot" id="send-kot">Print KOT</button>
+            <button class="btn btn-bill" id="print-bill">Print Bill</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderMenu() {
+  const cats = [...new Set(state.menu.map(m => m.category))];
+  return `
+    <h1 class="pagetitle">Menu &amp; Prices</h1>
+    <p class="helptext">Set the price for each item once — it's saved on this device. Tap a name to rename, or the ✕ to remove.</p>
+    ${cats.map(cat => `
+      <div class="card">
+        <h3>${escapeHtml(cat)}</h3>
+        ${state.menu.filter(m => m.category === cat).map(item => `
+          <div class="menu-item-row">
+            <span class="mname" data-rename="${item.id}">${escapeHtml(item.name)}</span>
+            <span class="mprice"><input type="number" inputmode="decimal" min="0" step="0.01" value="${item.price}" data-price="${item.id}"></span>
+            <button class="icon-btn danger" data-delete="${item.id}">✕</button>
+          </div>
+        `).join('')}
+        <button class="icon-btn" data-addto="${escapeAttr(cat)}" style="margin-top:6px;color:var(--orange-dark);font-weight:700;">+ Add item</button>
+      </div>
+    `).join('')}
+    <button class="btn-secondary" id="add-category">+ New category</button>
+  `;
+}
+
+function renderHistory() {
+  if (state.orders.length === 0) {
+    return `<h1 class="pagetitle">Order History</h1><div class="empty-state">No bills printed yet today.</div>`;
+  }
+  return `
+    <h1 class="pagetitle">Order History</h1>
+    ${state.orders.slice(0, 100).map(o => `
+      <div class="order-hist-item">
+        <div class="oh-top"><span>#${o.orderNo} · ${escapeHtml(o.brand)}</span><span>Rs.${o.total.toFixed(2)}</span></div>
+        <div class="oh-meta">${o.date} · ${o.time}</div>
+        <div class="oh-items">${o.items.map(it => `${it.qty}× ${escapeHtml(it.name)}`).join(', ')}</div>
+        <button class="icon-btn" data-reprint="${o.orderNo}-${o.date}-${o.time}" style="color:var(--orange-dark);font-weight:700;padding:0;">Reprint bill</button>
+      </div>
+    `).join('')}
+  `;
+}
+
+function renderSettings() {
+  const s = state.settings;
+  const bleStatus = state.bleChar ? `connected · ${s.bleDeviceName}` : 'not connected';
+  return `
+    <h1 class="pagetitle">Settings</h1>
+
+    <div class="card">
+      <h3>Staff account</h3>
+      <p class="helptext">Logged in as ${escapeHtml(state.session?.user?.email || '')}</p>
+      <button class="btn-secondary" id="logout-btn">Log out</button>
+    </div>
+
+    <div class="card">
+      <h3>Printer</h3>
+      <p class="helptext">Two ways to print, depending on your thermal printer:</p>
+      <p class="helptext"><strong>Option A — RawBT (recommended, works with almost any Bluetooth thermal printer):</strong> install the free <span style="font-weight:700">RawBT</span> app from the Play Store once, pair your printer inside RawBT, then just tap Print KOT / Print Bill here — it hands off to RawBT automatically.</p>
+      <p class="helptext"><strong>Option B — Direct Bluetooth (only for printers with Bluetooth Low Energy support):</strong> connect below. If this fails or nothing prints, your printer is likely Classic Bluetooth — use RawBT instead.</p>
+      <div class="status-pill ${state.bleChar?'connected':''}" style="margin-bottom:10px;"><span class="dot"></span>${bleStatus}</div>
+      <button class="btn-secondary" id="connect-ble">Connect via Bluetooth (BLE)</button>
+    </div>
+
+    <div class="card">
+      <h3>Business details</h3>
+      <div class="field"><label>Aricee bill header</label><input type="text" id="s-aricee" value="${escapeAttr(s.aricee_name)}"></div>
+      <div class="field"><label>Chi Lane bill header</label><input type="text" id="s-chilane" value="${escapeAttr(s.chilane_name)}"></div>
+      <div class="field"><label>GSTIN (optional, printed on bill)</label><input type="text" id="s-gstin" value="${escapeAttr(s.gstin)}"></div>
+    </div>
+
+    <div class="card">
+      <h3>GST</h3>
+      <div class="field" style="display:flex;align-items:center;gap:10px;margin-bottom:${s.gstEnabled?'14px':'0'};">
+        <input type="checkbox" id="s-gst-enabled" ${s.gstEnabled?'checked':''} style="width:auto;">
+        <label style="margin:0;">Print GST on bill</label>
+      </div>
+      ${s.gstEnabled ? `
+      <div class="row2">
+        <div class="field"><label>CGST %</label><input type="number" step="0.1" id="s-cgst" value="${s.cgst}"></div>
+        <div class="field"><label>SGST %</label><input type="number" step="0.1" id="s-sgst" value="${s.sgst}"></div>
+      </div>` : `<p class="helptext" style="margin-top:10px;">GST is currently off — bills show a flat total with no tax breakup.</p>`}
+    </div>
+
+    <div class="card">
+      <h3>Printer paper width</h3>
+      <div class="field">
+        <select id="s-paper">
+          <option value="32" ${s.paperWidth==32?'selected':''}>58mm (32 characters)</option>
+          <option value="42" ${s.paperWidth==42?'selected':''}>80mm (42 characters)</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="save-settings">Save settings</button>
+  `;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function escapeAttr(str) { return escapeHtml(str); }
+
+function attachHandlers() {
+  document.querySelectorAll('[data-brand]').forEach(b => b.onclick = () => {
+    state.brand = b.dataset.brand; persist(); render();
+  });
+  document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => {
+    state.tab = b.dataset.tab; render();
+  });
+  document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
+    const item = state.menu.find(m => m.id === b.dataset.add);
+    if (item) addToCart(item);
+  });
+  const goMenu = document.getElementById('go-menu');
+  if (goMenu) goMenu.onclick = () => { state.tab = 'menu'; render(); };
+
+  const cartToggle = document.getElementById('cart-toggle');
+  if (cartToggle) cartToggle.onclick = () => { state.cartOpen = !state.cartOpen; render(); };
+  document.querySelectorAll('[data-qty]').forEach(b => b.onclick = (e) => {
+    e.stopPropagation();
+    const [id, delta] = b.dataset.qty.split(':');
+    changeQty(id, parseInt(delta));
+  });
+  const discType = document.getElementById('disc-type');
+  const discValue = document.getElementById('disc-value');
+  if (discType) discType.onchange = () => setDiscount(discType.value, discValue.value);
+  if (discValue) discValue.onchange = () => setDiscount(discType.value, discValue.value);
+  const clearBtn = document.getElementById('clear-cart');
+  if (clearBtn) clearBtn.onclick = clearCart;
+  const kotBtn = document.getElementById('send-kot');
+  if (kotBtn) kotBtn.onclick = sendKOT;
+  const billBtn = document.getElementById('print-bill');
+  if (billBtn) billBtn.onclick = printBillAndCheckout;
+
+  document.querySelectorAll('[data-price]').forEach(inp => {
+    inp.onchange = () => editMenuPrice(inp.dataset.price, inp.value);
+  });
+  document.querySelectorAll('[data-rename]').forEach(el => {
+    el.onclick = () => renameMenuItem(el.dataset.rename);
+  });
+  document.querySelectorAll('[data-delete]').forEach(el => {
+    el.onclick = () => deleteMenuItem(el.dataset.delete);
+  });
+  document.querySelectorAll('[data-addto]').forEach(el => {
+    el.onclick = () => addMenuItem(el.dataset.addto);
+  });
+  const addCat = document.getElementById('add-category');
+  if (addCat) addCat.onclick = addCategory;
+
+  document.querySelectorAll('[data-accept]').forEach(el => {
+    el.onclick = () => {
+      const order = state.onlineOrders.find(o => o.id === el.dataset.accept);
+      if (order) acceptOnlineOrder(order);
+    };
+  });
+  document.querySelectorAll('[data-reprint]').forEach(el => {
+    el.onclick = () => {
+      const key = el.dataset.reprint;
+      const order = state.orders.find(o => (o.orderNo+'-'+o.date+'-'+o.time) === key);
+      if (order) doPrint(buildBillBytes(order, order));
+    };
+  });
+
+  const connectBtn = document.getElementById('connect-ble');
+  if (connectBtn) connectBtn.onclick = connectBLE;
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) logoutBtn.onclick = doLogout;
+
+  const saveBtn = document.getElementById('save-settings');
+  if (saveBtn) saveBtn.onclick = () => {
+    state.settings.aricee_name = document.getElementById('s-aricee').value;
+    state.settings.chilane_name = document.getElementById('s-chilane').value;
+    state.settings.gstin = document.getElementById('s-gstin').value;
+    state.settings.gstEnabled = document.getElementById('s-gst-enabled').checked;
+    const cgstEl = document.getElementById('s-cgst');
+    const sgstEl = document.getElementById('s-sgst');
+    if (cgstEl) state.settings.cgst = parseFloat(cgstEl.value) || 0;
+    if (sgstEl) state.settings.sgst = parseFloat(sgstEl.value) || 0;
+    state.settings.paperWidth = parseInt(document.getElementById('s-paper').value);
+    persist();
+    render();
+    toast('Settings saved.');
+  };
+  const gstToggle = document.getElementById('s-gst-enabled');
+  if (gstToggle) gstToggle.onchange = () => { state.settings.gstEnabled = gstToggle.checked; persist(); render(); };
+}
+
+/* ---------- auth ---------- */
+async function initAuth() {
+  const { data } = await supa.auth.getSession();
+  state.session = data.session;
+  state.authLoading = false;
+  if (state.session) {
+    await loadMenuFromSupabase();
+    subscribeOnlineOrders();
+  }
+  render();
+  supa.auth.onAuthStateChange((_event, session) => {
+    state.session = session;
+    render();
+    if (session) { loadMenuFromSupabase(); subscribeOnlineOrders(); }
+  });
+}
+async function doLogin(email, password) {
+  state.authError = '';
+  const { error } = await supa.auth.signInWithPassword({ email, password });
+  if (error) { state.authError = error.message; render(); }
+}
+async function doLogout() {
+  await supa.auth.signOut();
+  state.session = null;
+  render();
+}
+
+/* ---------- menu sync with Supabase ---------- */
+async function loadMenuFromSupabase() {
+  const { data, error } = await supa.from('menu_items').select('*').order('sort_order', { ascending: true });
+  if (error || !data) return;
+  state.menu = data.map(d => ({ id: d.id, category: d.category, name: d.name, price: Number(d.price) }));
+  persist();
+  render();
+}
+
+/* ---------- live incoming orders ---------- */
+function subscribeOnlineOrders() {
+  refreshOnlineOrders();
+  supa.channel('staff-orders')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+      refreshOnlineOrders();
+    })
+    .subscribe();
+}
+async function refreshOnlineOrders() {
+  const { data, error } = await supa.from('orders').select('*').eq('status', 'pending').order('created_at', { ascending: true });
+  if (error) return;
+  state.onlineOrders = data || [];
+  render();
+}
+async function acceptOnlineOrder(order) {
+  state.brand = order.brand;
+  state.cart = order.items.map(it => ({ itemId: 'online-' + Math.random(), name: it.name, price: it.price, qty: it.qty }));
+  state.currentOrderNo = order.order_no;
+  state.currentSupabaseOrderId = order.id;
+  state.discount = { type: 'flat', value: 0 };
+  state.tab = 'order';
+  persist();
+  const kotOrder = {
+    orderNo: order.order_no,
+    time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+    items: order.items
+  };
+  doPrint(buildKOTBytes(kotOrder));
+  await supa.from('orders').update({ status: 'accepted' }).eq('id', order.id);
+  render();
+}
+
+initAuth();
+</script>
+</body>
+</html>
