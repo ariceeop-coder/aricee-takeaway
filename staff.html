@@ -156,6 +156,15 @@
     display: block;
     margin-bottom: 6px;
   }
+  .price-strike { text-decoration: line-through; opacity: .6; font-weight: 500; }
+  .hh-tag {
+    position: absolute; top: -6px; left: -6px; background: var(--orange); color: #fff;
+    font-size: 11px; font-weight: 800; padding: 3px 7px; border-radius: 999px;
+  }
+  .hh-banner {
+    background: var(--orange); color: #fff; text-align: center; font-weight: 700; font-size: 13.5px;
+    padding: 10px 14px; border-radius: 12px; margin-bottom: 14px;
+  }
   .item-card .price {
     font-size: 13px;
     color: var(--text-soft);
@@ -540,19 +549,19 @@ const DEFAULT_MENU = [
     "id": "m8",
     "category": "Superlight Bowls",
     "name": "Potato Pops Super Light Quinoa Bowl",
-    "price": 209
+    "price": 199
   },
   {
     "id": "m9",
     "category": "Superlight Bowls",
     "name": "Soya Chunk Super Light Quinoa Bowl",
-    "price": 209
+    "price": 205
   },
   {
     "id": "m10",
     "category": "Superlight Bowls",
     "name": "Paneer Pepper Pops Super Light Quinoa Bowl",
-    "price": 249
+    "price": 229
   },
   {
     "id": "m11",
@@ -564,79 +573,79 @@ const DEFAULT_MENU = [
     "id": "m12",
     "category": "Superlight Bowls",
     "name": "Grilled Chicken Tikka Super Light Quinoa Bowl",
-    "price": 249
+    "price": 229
   },
   {
     "id": "m13",
     "category": "Superlight Bowls",
     "name": "Grilled Chicken Ghee Roast Super Light Quinoa Bowl",
-    "price": 249
+    "price": 229
   },
   {
     "id": "m14",
     "category": "Superlight Bowls",
     "name": "Grilled Naati Chilli Chicken Super Light Quinoa Bowl",
-    "price": 249
+    "price": 229
   },
   {
     "id": "m15",
     "category": "True Rice Bowls (Mini)",
     "name": "Potato Pops Super Light Rice Bowl (Mini)",
-    "price": 219
+    "price": 199
   },
   {
     "id": "m16",
     "category": "True Rice Bowls (Mini)",
     "name": "Soya Chunk Rice Bowl (Mini)",
-    "price": 219
+    "price": 199
   },
   {
     "id": "m17",
     "category": "True Rice Bowls (Mini)",
     "name": "Paneer Pepper Pops Rice Bowl (Mini)",
-    "price": 259
+    "price": 245
   },
   {
     "id": "m18",
     "category": "True Rice Bowls (Mini)",
     "name": "Egg Masala Rice Bowl (Mini)",
-    "price": 239
+    "price": 229
   },
   {
     "id": "m19",
     "category": "True Rice Bowls (Mini)",
     "name": "Grilled Chicken Tikka Rice Bowl (Mini)",
-    "price": 259
+    "price": 245
   },
   {
     "id": "m20",
     "category": "True Rice Bowls (Mini)",
     "name": "Grilled Chicken Ghee Roast Rice Bowl (Mini)",
-    "price": 259
+    "price": 245
   },
   {
     "id": "m21",
     "category": "True Rice Bowls (Mini)",
     "name": "Grilled Naati Chilli Chicken Rice Bowl (Mini)",
-    "price": 259
+    "price": 245
   },
   {
     "id": "m22",
     "category": "True Rice Bowls (Regular)",
     "name": "Potato Pops Rice Bowl (Regular)",
-    "price": 249
+    "price": 229
   },
   {
     "id": "m23",
     "category": "True Rice Bowls (Regular)",
     "name": "Soya Chunk Rice Bowl (Regular)",
-    "price": 249
+    "price": 229
   },
   {
     "id": "m24",
     "category": "True Rice Bowls (Regular)",
     "name": "Paneer Pepper Pops Rice Bowl (Regular)",
-    "price": 289
+    "price": 275
   },
   {
     "id": "m25",
@@ -648,103 +657,103 @@ const DEFAULT_MENU = [
     "id": "m26",
     "category": "True Rice Bowls (Regular)",
     "name": "Grilled Chicken Tikka Rice Bowl (Regular)",
-    "price": 289
+    "price": 275
   },
   {
     "id": "m27",
     "category": "True Rice Bowls (Regular)",
     "name": "Grilled Chicken Ghee Roast Rice Bowl (Regular)",
-    "price": 289
+    "price": 275
   },
   {
     "id": "m28",
     "category": "True Rice Bowls (Regular)",
     "name": "Grilled Naati Chilli Chicken Rice Bowl (Regular)",
-    "price": 289
+    "price": 275
   },
   {
     "id": "m29",
     "category": "Quinoa Bowls (Mini)",
     "name": "Potato Pops Quinoa Bowl (Mini)",
-    "price": 259
+    "price": 219
   },
   {
     "id": "m30",
     "category": "Quinoa Bowls (Mini)",
     "name": "Soya Chunk Quinoa Bowl (Mini)",
-    "price": 259
+    "price": 219
   },
   {
     "id": "m31",
     "category": "Quinoa Bowls (Mini)",
     "name": "Paneer Pepper Pops Quinoa Bowl (Mini)",
-    "price": 299
+    "price": 255
   },
   {
     "id": "m32",
     "category": "Quinoa Bowls (Mini)",
     "name": "Egg Masala Quinoa Bowl (Mini)",
-    "price": 269
+    "price": 239
   },
   {
     "id": "m33",
     "category": "Quinoa Bowls (Mini)",
     "name": "Grilled Chicken Tikka Quinoa Bowl (Mini)",
-    "price": 299
+    "price": 255
   },
   {
     "id": "m34",
     "category": "Quinoa Bowls (Mini)",
     "name": "Grilled Chicken Ghee Roast Quinoa Bowl (Mini)",
-    "price": 299
+    "price": 255
   },
   {
     "id": "m35",
     "category": "Quinoa Bowls (Mini)",
     "name": "Grilled Naati Chilli Chicken Quinoa Bowl (Mini)",
-    "price": 299
+    "price": 255
   },
   {
     "id": "m36",
     "category": "Quinoa Bowls (Regular)",
     "name": "Potato Pops Quinoa Bowl (Regular)",
-    "price": 279
+    "price": 239
   },
   {
     "id": "m37",
     "category": "Quinoa Bowls (Regular)",
     "name": "Soya Chunk Quinoa Bowl (Regular)",
-    "price": 279
+    "price": 239
   },
   {
     "id": "m38",
     "category": "Quinoa Bowls (Regular)",
     "name": "Paneer Pepper Pops Quinoa Bowl (Regular)",
-    "price": 309
+    "price": 275
   },
   {
     "id": "m39",
     "category": "Quinoa Bowls (Regular)",
     "name": "Egg Masala Quinoa Bowl (Regular)",
-    "price": 289
+    "price": 269
   },
   {
     "id": "m40",
     "category": "Quinoa Bowls (Regular)",
     "name": "Grilled Chicken Tikka Quinoa Bowl (Regular)",
-    "price": 309
+    "price": 275
   },
   {
     "id": "m41",
     "category": "Quinoa Bowls (Regular)",
     "name": "Grilled Chicken Ghee Roast Quinoa Bowl (Regular)",
-    "price": 309
+    "price": 275
   },
   {
     "id": "m42",
     "category": "Quinoa Bowls (Regular)",
     "name": "Grilled Naati Chilli Chicken Quinoa Bowl (Regular)",
-    "price": 309
+    "price": 275
   },
   {
     "id": "m43",
@@ -780,175 +789,175 @@ const DEFAULT_MENU = [
     "id": "m48",
     "category": "Fermented Rice Kanji Bowl (Mini)",
     "name": "Potato Pops Fermented Rice Kanji Bowl (Mini)",
-    "price": 239
+    "price": 209
   },
   {
     "id": "m49",
     "category": "Fermented Rice Kanji Bowl (Mini)",
     "name": "Soya Chunk Fermented Rice Kanji Bowl (Mini)",
-    "price": 239
+    "price": 209
   },
   {
     "id": "m50",
     "category": "Fermented Rice Kanji Bowl (Mini)",
     "name": "Paneer Pepper Pops Fermented Rice Kanji Bowl (Mini)",
-    "price": 269
+    "price": 239
   },
   {
     "id": "m51",
     "category": "Fermented Rice Kanji Bowl (Mini)",
     "name": "Egg Masala Fermented Rice Kanji Bowl (Mini)",
-    "price": 259
+    "price": 219
   },
   {
     "id": "m52",
     "category": "Fermented Rice Kanji Bowl (Mini)",
     "name": "Grilled Chicken Tikka Fermented Rice Kanji Bowl (Mini)",
-    "price": 269
+    "price": 239
   },
   {
     "id": "m53",
     "category": "Fermented Rice Kanji Bowl (Mini)",
     "name": "Grilled Chicken Ghee Roast Fermented Rice Kanji Bowl (Mini)",
-    "price": 269
+    "price": 239
   },
   {
     "id": "m54",
     "category": "Fermented Rice Kanji Bowl (Mini)",
     "name": "Grilled Naati Chilli Chicken Fermented Rice Kanji Bowl (Mini)",
-    "price": 269
+    "price": 239
   },
   {
     "id": "m55",
     "category": "Fermented Rice Kanji Bowl (Regular)",
     "name": "Potato Pops Fermented Rice Kanji Bowl (Regular)",
-    "price": 269
+    "price": 229
   },
   {
     "id": "m56",
     "category": "Fermented Rice Kanji Bowl (Regular)",
     "name": "Soya Chunk Fermented Rice Kanji Bowl (Regular)",
-    "price": 269
+    "price": 229
   },
   {
     "id": "m57",
     "category": "Fermented Rice Kanji Bowl (Regular)",
     "name": "Paneer Pepper Pops Fermented Rice Kanji Bowl (Regular)",
-    "price": 299
+    "price": 255
   },
   {
     "id": "m58",
     "category": "Fermented Rice Kanji Bowl (Regular)",
     "name": "Egg Masala Fermented Rice Kanji Bowl (Regular)",
-    "price": 279
+    "price": 239
   },
   {
     "id": "m59",
     "category": "Fermented Rice Kanji Bowl (Regular)",
     "name": "Grilled Chicken Tikka Fermented Rice Kanji Bowl (Regular)",
-    "price": 299
+    "price": 255
   },
   {
     "id": "m60",
     "category": "Fermented Rice Kanji Bowl (Regular)",
     "name": "Grilled Chicken Ghee Roast Fermented Rice Kanji Bowl (Regular)",
-    "price": 299
+    "price": 255
   },
   {
     "id": "m61",
     "category": "Fermented Rice Kanji Bowl (Regular)",
     "name": "Grilled Naati Chilli Chicken Fermented Rice Kanji Bowl (Regular)",
-    "price": 299
+    "price": 255
   },
   {
     "id": "m62",
     "category": "Foxtail Kanji Bowl (Mini)",
     "name": "Potato Pops Foxtail Kanji Bowl (Mini)",
-    "price": 229
+    "price": 199
   },
   {
     "id": "m63",
     "category": "Foxtail Kanji Bowl (Mini)",
     "name": "Soya Chunk Foxtail Kanji Bowl (Mini)",
-    "price": 229
+    "price": 199
   },
   {
     "id": "m64",
     "category": "Foxtail Kanji Bowl (Mini)",
     "name": "Paneer Pepper Pops Foxtail Kanji Bowl (Mini)",
-    "price": 259
+    "price": 229
   },
   {
     "id": "m65",
     "category": "Foxtail Kanji Bowl (Mini)",
     "name": "Egg Masala Foxtail Kanji Bowl (Mini)",
-    "price": 239
+    "price": 219
   },
   {
     "id": "m66",
     "category": "Foxtail Kanji Bowl (Mini)",
     "name": "Grilled Chicken Tikka Foxtail Kanji Bowl (Mini)",
-    "price": 259
+    "price": 229
   },
   {
     "id": "m67",
     "category": "Foxtail Kanji Bowl (Mini)",
     "name": "Grilled Chicken Ghee Roast Foxtail Kanji Bowl (Mini)",
-    "price": 259
+    "price": 229
   },
   {
     "id": "m68",
     "category": "Foxtail Kanji Bowl (Mini)",
     "name": "Grilled Naati Chilli Chicken Foxtail Kanji Bowl (Mini)",
-    "price": 259
+    "price": 229
   },
   {
     "id": "m69",
     "category": "Foxtail Kanji Bowl (Regular)",
     "name": "Potato Pops Foxtail Kanji Bowl (Regular)",
-    "price": 259
+    "price": 219
   },
   {
     "id": "m70",
     "category": "Foxtail Kanji Bowl (Regular)",
     "name": "Soya Chunk Foxtail Kanji Bowl (Regular)",
-    "price": 259
+    "price": 219
   },
   {
     "id": "m71",
     "category": "Foxtail Kanji Bowl (Regular)",
     "name": "Paneer Pepper Pops Foxtail Kanji Bowl (Regular)",
-    "price": 289
+    "price": 255
   },
   {
     "id": "m72",
     "category": "Foxtail Kanji Bowl (Regular)",
     "name": "Egg Masala Foxtail Kanji Bowl (Regular)",
-    "price": 269
+    "price": 239
   },
   {
     "id": "m73",
     "category": "Foxtail Kanji Bowl (Regular)",
     "name": "Grilled Chicken Tikka Foxtail Kanji Bowl (Regular)",
-    "price": 289
+    "price": 255
   },
   {
     "id": "m74",
     "category": "Foxtail Kanji Bowl (Regular)",
     "name": "Grilled Chicken Ghee Roast Foxtail Kanji Bowl (Regular)",
-    "price": 289
+    "price": 255
   },
   {
     "id": "m75",
     "category": "Foxtail Kanji Bowl (Regular)",
     "name": "Grilled Naati Chilli Chicken Foxtail Kanji Bowl (Regular)",
-    "price": 289
+    "price": 255
   },
   {
     "id": "m76",
     "category": "Fresh Salads",
     "name": "Channa Salad",
-    "price": 125
+    "price": 189
   },
   {
     "id": "m77",
@@ -983,8 +992,8 @@ const DEFAULT_MENU = [
   {
     "id": "m82",
     "category": "Lite Bites",
-    "name": "Rice papadi Chaat",
-    "price": 143
+    "name": "Rice Papadi Chaat",
+    "price": 163
   },
   {
     "id": "m83",
@@ -1048,9 +1057,9 @@ const DEFAULT_MENU = [
   },
   {
     "id": "m93",
-    "category": "Deserts",
+    "category": "Desserts",
     "name": "Aval",
-    "price": 79
+    "price": 89
   },
   {
     "id": "m94",
@@ -1099,15 +1108,36 @@ const DEFAULT_MENU = [
     "category": "Beverages",
     "name": "Water Bottle",
     "price": 15
+  },
+  {
+    "id": "m102",
+    "category": "Beverages",
+    "name": "Thums Up",
+    "price": 20
   }
 ];
 
-const MENU_VERSION = 2; // bump this whenever a fresh menu is pushed, so devices pick it up
+const MENU_VERSION = 3; // bump this whenever a fresh menu is pushed, so devices pick it up
 
 function loadMenu() {
   const storedVersion = DB.load('billing_menu_version', 0);
   if (storedVersion < MENU_VERSION) return DEFAULT_MENU;
   return DB.load('billing_menu', DEFAULT_MENU);
+}
+
+/* ---------- happy hour: 50% off Lite Bites & Wraps, 4pm-7pm, pickup only ---------- */
+const HAPPY_HOUR_CATEGORIES = ['Lite Bites', 'Indus Wraps'];
+const HAPPY_HOUR_START = 16, HAPPY_HOUR_END = 19, HAPPY_HOUR_DISCOUNT = 0.5;
+function isHappyHourActive() {
+  const h = new Date().getHours();
+  return h >= HAPPY_HOUR_START && h < HAPPY_HOUR_END;
+}
+function isHappyHourCategory(cat) { return HAPPY_HOUR_CATEGORIES.includes(cat); }
+function effectivePrice(item) {
+  if (isHappyHourActive() && isHappyHourCategory(item.category)) {
+    return Math.round(item.price * (1 - HAPPY_HOUR_DISCOUNT) * 100) / 100;
+  }
+  return item.price;
 }
 
 const state = {
@@ -1178,7 +1208,10 @@ function nextOrderNo() {
 function addToCart(item) {
   const existing = state.cart.find(c => c.itemId === item.id);
   if (existing) existing.qty += 1;
-  else state.cart.push({ itemId: item.id, name: item.name, price: item.price, qty: 1 });
+  else {
+    const price = effectivePrice(item);
+    state.cart.push({ itemId: item.id, name: item.name, price, originalPrice: item.price, happyHour: price < item.price, qty: 1 });
+  }
   persist();
   render();
 }
@@ -1401,7 +1434,7 @@ function sendKOT() {
     orderNo: state.currentOrderNo,
     brand: state.brand,
     time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-    items: state.cart.map(c => ({ name: c.name, qty: c.qty, price: c.price }))
+    items: state.cart.map(c => ({ name: c.name + (c.happyHour ? ' (Happy Hour -50%)' : ''), qty: c.qty, price: c.price }))
   };
   doPrint(buildKOTBytes(order));
   persist();
@@ -1416,7 +1449,7 @@ function printBillAndCheckout() {
     brand: state.brand,
     date: now.toLocaleDateString('en-IN'),
     time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-    items: state.cart.map(c => ({ name: c.name, qty: c.qty, price: c.price })),
+    items: state.cart.map(c => ({ name: c.name + (c.happyHour ? ' (Happy Hour -50%)' : ''), qty: c.qty, price: c.price })),
     ...totals
   };
   doPrint(buildBillBytes(order, totals));
@@ -1589,22 +1622,28 @@ function renderOrder() {
   if (cats.length === 0) {
     return `<div class="empty-state">No menu items yet.<br><button class="btn-primary" id="go-menu" style="margin-top:12px;width:auto;padding:10px 18px;">Add items</button></div>`;
   }
-  return cats.map(cat => `
+  const hhActive = isHappyHourActive();
+  return `
+    ${hhActive ? `<div class="hh-banner">🔥 Happy Hour: 50% off Lite Bites &amp; Wraps, until 7pm</div>` : ''}
+    ${cats.map(cat => `
     <div class="category">
       <h2>${cat}</h2>
       <div class="item-grid">
         ${state.menu.filter(m => m.category === cat).map(item => {
           const inCart = state.cart.find(c => c.itemId === item.id);
+          const discounted = hhActive && isHappyHourCategory(item.category) && item.price > 0;
+          const price = discounted ? effectivePrice(item) : item.price;
           return `
           <button class="item-card ${item.price===0?'zero-price':''}" data-add="${item.id}">
             ${inCart ? `<span class="qtybadge">${inCart.qty}</span>` : ''}
+            ${discounted ? `<span class="hh-tag">-50%</span>` : ''}
             <span class="name">${escapeHtml(item.name)}</span>
-            <span class="price">${item.price>0 ? 'Rs.'+item.price.toFixed(2) : 'No price set'}</span>
+            <span class="price">${item.price>0 ? (discounted ? `<span class="price-strike">Rs.${item.price.toFixed(2)}</span> ` : '') + 'Rs.'+price.toFixed(2) : 'No price set'}</span>
           </button>`;
         }).join('')}
       </div>
     </div>
-  `).join('');
+  `).join('')}`;
 }
 
 function cartBar() {
@@ -1622,7 +1661,7 @@ function cartBar() {
           ${state.cart.map(c => `
             <div class="cart-line">
               <div style="flex:1">
-                <div class="cname">${escapeHtml(c.name)}</div>
+                <div class="cname">${escapeHtml(c.name)}${c.happyHour ? ' <span style="color:#ffb27a;font-weight:800;">(-50%)</span>' : ''}</div>
                 <div class="cprice">Rs.${c.price.toFixed(2)} each</div>
               </div>
               <div class="qtystep">
@@ -1645,6 +1684,9 @@ function cartBar() {
               <input id="disc-value" type="number" min="0" step="0.01" value="${state.discount.value || ''}" placeholder="0"
                 style="width:64px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px 8px;font-size:13px;">
             </div>
+          </div>
+          <div class="cart-line" style="border-bottom:none;padding-top:0;">
+            <button class="icon-btn" id="student-discount-btn" style="color:#ffb27a;font-weight:700;font-size:12.5px;padding:0;">🎓 Apply 15% student discount</button>
           </div>
           <div class="cart-line" style="border-bottom:none;">
             <div class="cname">Subtotal</div>
@@ -1786,6 +1828,8 @@ function attachHandlers() {
   const discValue = document.getElementById('disc-value');
   if (discType) discType.onchange = () => setDiscount(discType.value, discValue.value);
   if (discValue) discValue.onchange = () => setDiscount(discType.value, discValue.value);
+  const studentBtn = document.getElementById('student-discount-btn');
+  if (studentBtn) studentBtn.onclick = () => setDiscount('percent', 15);
   const clearBtn = document.getElementById('clear-cart');
   if (clearBtn) clearBtn.onclick = clearCart;
   const cancelOnlineBtn = document.getElementById('cancel-online-order');
