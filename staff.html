@@ -1231,15 +1231,19 @@ function clearCart() {
   persist();
   render();
 }
-function setDiscount(type, value) {
-  state.discount = { type, value: Math.max(0, parseFloat(value) || 0) };
+function setDiscount(type, value, excludeHappyHour) {
+  state.discount = { type, value: Math.max(0, parseFloat(value) || 0), excludeHappyHour: !!excludeHappyHour };
   persist();
   render();
 }
 function cartTotals() {
   const subtotal = state.cart.reduce((s,c) => s + c.price * c.qty, 0);
+  // Student discount (excludeHappyHour) skips items already on the 50% happy-hour price
+  const eligible = state.discount.excludeHappyHour
+    ? state.cart.filter(c => !c.happyHour).reduce((s,c) => s + c.price * c.qty, 0)
+    : subtotal;
   let discountAmt = state.discount.type === 'percent'
-    ? subtotal * (state.discount.value / 100)
+    ? eligible * (state.discount.value / 100)
     : state.discount.value;
   discountAmt = Math.min(Math.max(discountAmt, 0), subtotal);
   const taxable = subtotal - discountAmt;
@@ -1674,7 +1678,7 @@ function cartBar() {
           <div class="cart-line discount-row">
             <div style="flex:1">
               <div class="cname">Discount</div>
-              <div class="cprice">${totals.discountAmt > 0 ? '−Rs.' + totals.discountAmt.toFixed(2) : 'none applied'}</div>
+              <div class="cprice">${totals.discountAmt > 0 ? '−Rs.' + totals.discountAmt.toFixed(2) : 'none applied'}${state.discount.excludeHappyHour ? (state.cart.some(c => c.happyHour) ? ' · Happy Hour items excluded' : ' · student') : ''}</div>
             </div>
             <div style="display:flex;gap:6px;align-items:center;">
               <select id="disc-type" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px;font-size:12.5px;">
@@ -1829,7 +1833,7 @@ function attachHandlers() {
   if (discType) discType.onchange = () => setDiscount(discType.value, discValue.value);
   if (discValue) discValue.onchange = () => setDiscount(discType.value, discValue.value);
   const studentBtn = document.getElementById('student-discount-btn');
-  if (studentBtn) studentBtn.onclick = () => setDiscount('percent', 15);
+  if (studentBtn) studentBtn.onclick = () => setDiscount('percent', 15, true);
   const clearBtn = document.getElementById('clear-cart');
   if (clearBtn) clearBtn.onclick = clearCart;
   const cancelOnlineBtn = document.getElementById('cancel-online-order');
@@ -1999,7 +2003,11 @@ async function acceptOnlineOrder(order) {
   const items = state.onlineOrderEdits[order.id] || order.items;
   if (items.length === 0) return;
   state.brand = order.brand;
-  state.cart = items.map(it => ({ itemId: 'online-' + Math.random(), name: it.name, price: it.price, qty: it.qty }));
+  const HH_TAG = ' (Happy Hour -50%)';
+  state.cart = items.map(it => {
+    const hh = String(it.name).includes(HH_TAG);
+    return { itemId: 'online-' + Math.random(), name: hh ? it.name.replace(HH_TAG, '') : it.name, price: it.price, happyHour: hh, qty: it.qty };
+  });
   state.currentOrderNo = order.order_no;
   state.currentSupabaseOrderId = order.id;
   state.discount = { type: 'flat', value: 0 };
