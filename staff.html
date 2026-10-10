@@ -1183,12 +1183,12 @@ function persist() {
   DB.save('billing_current_order_no', state.currentOrderNo);
 }
 
-function toast(msg) {
+function toast(msg, ms) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(toast._h);
-  toast._h = setTimeout(() => t.classList.remove('show'), 2200);
+  toast._h = setTimeout(() => t.classList.remove('show'), ms || 2200);
 }
 
 function todayStr() {
@@ -1678,7 +1678,7 @@ function cartBar() {
           <div class="cart-line discount-row">
             <div style="flex:1">
               <div class="cname">Discount</div>
-              <div class="cprice">${totals.discountAmt > 0 ? '−Rs.' + totals.discountAmt.toFixed(2) : 'none applied'}${state.discount.excludeHappyHour ? (state.cart.some(c => c.happyHour) ? ' · Happy Hour items excluded' : ' · student') : ''}</div>
+              <div class="cprice">${totals.discountAmt > 0 ? '−Rs.' + totals.discountAmt.toFixed(2) : 'none applied'}${state.discount.excludeHappyHour && state.cart.some(c => c.happyHour) ? ' · not applicable on Happy Hour items' : ''}</div>
             </div>
             <div style="display:flex;gap:6px;align-items:center;">
               <select id="disc-type" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px;font-size:12.5px;">
@@ -1833,7 +1833,17 @@ function attachHandlers() {
   if (discType) discType.onchange = () => setDiscount(discType.value, discValue.value);
   if (discValue) discValue.onchange = () => setDiscount(discType.value, discValue.value);
   const studentBtn = document.getElementById('student-discount-btn');
-  if (studentBtn) studentBtn.onclick = () => setDiscount('percent', 15, true);
+  if (studentBtn) studentBtn.onclick = () => {
+    const hhItems = state.cart.filter(c => c.happyHour);
+    const regularItems = state.cart.filter(c => !c.happyHour);
+    if (state.cart.length === 0) { toast('Cart is empty.'); return; }
+    if (regularItems.length === 0) {
+      toast('Student discount cannot be applied: all items are on the Happy Hour offer.', 3800);
+      return;
+    }
+    setDiscount('percent', 15, true);
+    if (hhItems.length > 0) toast('Student 15% applied only to non-Happy Hour items. Cannot be combined with the Happy Hour offer.', 4200);
+  };
   const clearBtn = document.getElementById('clear-cart');
   if (clearBtn) clearBtn.onclick = clearCart;
   const cancelOnlineBtn = document.getElementById('cancel-online-order');
