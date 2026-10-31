@@ -2416,6 +2416,14 @@ async function loadMenuFromSupabase() {
   const { data, error } = await supa.from('menu_items').select('*').order('sort_order', { ascending: true });
   if (error || !data) return;
   state.menu = data.map(d => ({ id: d.id, category: d.category, name: d.name, price: Number(d.price), brand: d.brand || 'Aricee' }));
+  // Chi Lane items built into the app that the server doesn't have yet (so the tab is never empty)
+  const have = new Set(state.menu.map(m => m.id));
+  const missing = DEFAULT_MENU.filter(m => m.brand === 'Chi Lane' && !have.has(m.id));
+  if (missing.length) {
+    state.menu = state.menu.concat(missing);
+    // best-effort copy to the server; quietly ignored if the server isn't set up for it yet
+    supa.from('menu_items').upsert(missing.map((m, i) => ({ id: m.id, category: m.category, name: m.name, price: m.price, brand: m.brand, sort_order: 1000 + i }))).then(() => {}, () => {});
+  }
   persist();
   render();
 }
