@@ -1281,6 +1281,13 @@ const DEFAULT_MENU = [
     "brand": "Chi Lane"
   },
   {
+    "id": "cl50",
+    "category": "Noodle",
+    "name": "Mushroom Noodle",
+    "price": 224,
+    "brand": "Chi Lane"
+  },
+  {
     "id": "cl10",
     "category": "Noodle",
     "name": "Veg Schezwan Noodle",
@@ -1562,7 +1569,7 @@ const DEFAULT_MENU = [
   }
 ];
 
-const MENU_VERSION = 4; // bump this whenever a fresh menu is pushed, so devices pick it up
+const MENU_VERSION = 5; // bump this whenever a fresh menu is pushed, so devices pick it up
 
 // menu items for the brand currently selected (older rows without a brand are Aricee)
 function brandMenu() { return state.menu.filter(m => (m.brand || 'Aricee') === state.brand); }
