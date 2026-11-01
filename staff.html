@@ -1915,10 +1915,12 @@ function printBillAndCheckout() {
     date: now.toLocaleDateString('en-IN'),
     time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
     items: state.cart.map(c => ({ name: c.name + (c.happyHour ? ' (Happy Hour -50%)' : ''), qty: c.qty, price: c.price })),
+    ts: Date.now(),
     ...totals
   };
   doPrint(buildBillBytes(order, totals));
   state.orders.unshift(order);
+  pushBills([order]);
   if (state.currentSupabaseOrderId) {
     sbRun(supa.from('orders').update({ status: 'billed' }).eq('id', state.currentSupabaseOrderId));
   }
@@ -2391,13 +2393,14 @@ async function initAuth() {
   state.authLoading = false;
   if (state.session) {
     await loadMenuFromSupabase();
+    syncBills();
     subscribeOnlineOrders();
   }
   render();
   supa.auth.onAuthStateChange((_event, session) => {
     state.session = session;
     render();
-    if (session) { loadMenuFromSupabase(); subscribeOnlineOrders(); }
+    if (session) { loadMenuFromSupabase(); syncBills(); subscribeOnlineOrders(); }
   });
 }
 async function doLogin(email, password) {
@@ -2426,6 +2429,41 @@ async function loadMenuFromSupabase() {
   }
   persist();
   render();
+}
+
+/* ---------- bill history shared across devices (Supabase `bills` table) ---------- */
+function billKey(o) { return [o.brand, o.date, o.orderNo, o.time].join('|'); }
+// best-effort timestamp for bills saved before `ts` existed ("1/11/2026", "11:05 pm")
+function billTs(o) {
+  if (o.ts) return o.ts;
+  try {
+    const [d, m, y] = String(o.date).split('/').map(Number);
+    const t = String(o.time).match(/(\d+):(\d+)\s*([ap]m)?/i);
+    let hh = t ? Number(t[1]) : 0; const mm = t ? Number(t[2]) : 0;
+    if (t && t[3]) { const pm = /p/i.test(t[3]); if (pm && hh < 12) hh += 12; if (!pm && hh === 12) hh = 0; }
+    return new Date(y, m - 1, d, hh, mm).getTime() || 0;
+  } catch (e) { return 0; }
+}
+async function pushBills(list) {
+  if (!supa || !state.session || !list.length) return;
+  try {
+    await supa.from('bills').upsert(list.map(o => ({ id: billKey(o), data: { ...o, ts: billTs(o) } })));
+  } catch (e) { /* history table not set up yet: bills stay on this device */ }
+}
+async function syncBills() {
+  if (!supa || !state.session) return;
+  try {
+    const { data, error } = await supa.from('bills').select('id, data').order('created_at', { ascending: false }).limit(500);
+    if (error || !data) return;
+    const byKey = new Map();
+    data.forEach(r => { if (r.data) byKey.set(r.id, r.data); });
+    const localOnly = state.orders.filter(o => !byKey.has(billKey(o)));
+    state.orders.forEach(o => { if (!byKey.has(billKey(o))) byKey.set(billKey(o), { ...o, ts: billTs(o) }); });
+    state.orders = Array.from(byKey.values()).sort((a, b) => billTs(b) - billTs(a)).slice(0, 500);
+    persist();
+    render();
+    if (localOnly.length) pushBills(localOnly); // upload anything only this device had
+  } catch (e) { /* table missing: ignore */ }
 }
 
 /* ---------- notification sound ---------- */
