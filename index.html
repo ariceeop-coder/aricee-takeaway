@@ -115,8 +115,8 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const params = new URLSearchParams(location.search);
-const brand = params.get('brand') === 'ChiLane' ? 'Chi Lane' : 'Aricee';
-const brandName = brand === 'Aricee' ? 'Aricee - The Indian Kitchen' : 'Chi Lane Kitchen';
+const brand = 'Aricee';
+const brandName = 'Aricee - The Indian Kitchen';
 
 const state = { menu: [], cart: [], cartOpen: false, placedOrder: null, placing: false };
 
