@@ -2105,7 +2105,7 @@ async function syncBills() {
     const { data, error } = await supa.from('bills').select('*').order('created_at', { ascending: false }).limit(500);
     if (error || !data) return;
     const byKey = new Map();
-    data.forEach(r => { const o = rowToBill(r); byKey.set(billKey(o), o); });
+    data.forEach(r => { const o = rowToBill(r); if (o.brand !== 'Harlur') byKey.set(billKey(o), o); }); // Harlur has its own history
     const localOnly = state.orders.filter(o => !byKey.has(billKey(o)));
     localOnly.forEach(o => byKey.set(billKey(o), { ...o, ts: billTs(o) }));
     state.orders = Array.from(byKey.values()).sort((x, y) => billTs(y) - billTs(x)).slice(0, 500);
@@ -2159,7 +2159,7 @@ function subscribeOnlineOrders() {
     .subscribe();
 }
 async function refreshOnlineOrders() {
-  const { data, error } = await supa.from('orders').select('*').eq('status', 'pending').order('created_at', { ascending: true });
+  const { data, error } = await supa.from('orders').select('*').eq('status', 'pending').or('brand.is.null,brand.neq.Harlur').order('created_at', { ascending: true });
   if (error) return;
   const fresh = data || [];
   if (state.knownOrderIds === null) {
