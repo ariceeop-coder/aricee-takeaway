@@ -67,3 +67,23 @@ do $$ begin
 end $$;
 
 -- Then: Authentication -> Users -> Add user (email + password) for each staff member.
+
+-- Separate order numbers per outlet (Aricee and Harlur each count 1, 2, 3...)
+create table if not exists order_counters (brand text primary key, last_no bigint not null default 0);
+alter table order_counters enable row level security;
+insert into order_counters (brand, last_no)
+select coalesce(brand, 'Aricee'), max(order_no) from orders group by coalesce(brand, 'Aricee')
+on conflict (brand) do update set last_no = greatest(order_counters.last_no, excluded.last_no);
+create or replace function assign_outlet_order_no() returns trigger
+language plpgsql security definer set search_path to 'public' as $$
+declare n bigint;
+begin
+  insert into order_counters (brand, last_no) values (coalesce(new.brand, 'Aricee'), 1)
+  on conflict (brand) do update set last_no = order_counters.last_no + 1
+  returning last_no into n;
+  new.order_no := n;
+  return new;
+end; $$;
+drop trigger if exists trg_assign_outlet_order_no on orders;
+create trigger trg_assign_outlet_order_no before insert on orders
+for each row execute function assign_outlet_order_no();
