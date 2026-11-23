@@ -1562,7 +1562,7 @@ function escBytesToLines(bytes) {
 }
 function printViaBrowser(bytes) {
   const w = state.settings.paperWidth;                 // characters per line
-  const widthMm = w >= 42 ? 72 : 48;                   // printable width of 80mm / 58mm paper
+  const widthMm = (state.settings.paperMm || (w >= 42 ? 80 : 58)) === 58 ? 48 : 72;                   // printable width of 80mm / 58mm paper
   const fontMm = (widthMm / (w * 0.6)).toFixed(3);     // monospace glyph is ~0.6em wide
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const html = escBytesToLines(bytes).map(l =>
@@ -1970,8 +1970,9 @@ function renderSettings() {
         </select>
         <p class="helptext" style="margin:14px 0 6px;">Paper width</p>
         <select id="s-paper">
-          <option value="32" ${s.paperWidth==32?'selected':''}>58mm (32 characters)</option>
-          <option value="42" ${s.paperWidth==42?'selected':''}>80mm (42 characters)</option>
+          ${(() => { const mm = s.paperMm || (s.paperWidth >= 42 ? 80 : 58); const cur = s.paperWidth + ':' + mm;
+            return [['42:80','80mm paper · small text'],['36:80','80mm paper · medium text'],['32:80','80mm paper · large text'],['28:80','80mm paper · extra large text'],['32:58','58mm paper']]
+              .map(([v, l]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${l}</option>`).join(''); })()}
         </select>
       </div>
     </div>
@@ -2090,7 +2091,8 @@ function attachHandlers() {
     const sgstEl = document.getElementById('s-sgst');
     if (cgstEl) state.settings.cgst = parseFloat(cgstEl.value) || 0;
     if (sgstEl) state.settings.sgst = parseFloat(sgstEl.value) || 0;
-    state.settings.paperWidth = parseInt(document.getElementById('s-paper').value);
+    const [pw, pmm] = document.getElementById('s-paper').value.split(':').map(Number);
+    state.settings.paperWidth = pw; state.settings.paperMm = pmm;
     state.settings.printMode = document.getElementById('s-printmode').value;
     persist();
     render();
