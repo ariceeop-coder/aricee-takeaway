@@ -1613,7 +1613,7 @@ function sendKOT() {
   doPrint(buildKOTBytes(order));
   persist();
 }
-function printBillAndCheckout() {
+function printBillAndCheckout(finalStatus) {
   if (state.cart.length === 0) { toast('Cart is empty.'); return; }
   if (!state.currentOrderNo) state.currentOrderNo = nextOrderNo();
   const totals = cartTotals();
@@ -1631,7 +1631,7 @@ function printBillAndCheckout() {
   state.orders.unshift(order);
   pushBills([order]);
   if (state.currentSupabaseOrderId) {
-    sbRun(supa.from('orders').update({ status: 'billed' }).eq('id', state.currentSupabaseOrderId));
+    sbRun(supa.from('orders').update({ status: finalStatus || 'billed' }).eq('id', state.currentSupabaseOrderId));
   }
   state.cart = [];
   state.currentOrderNo = null;
@@ -2255,17 +2255,11 @@ async function acceptOnlineOrder(order) {
   state.currentSupabaseOrderId = order.id;
   state.discount = { type: 'flat', value: 0 };
   state.tab = 'order';
-  persist();
-  const kotOrder = {
-    orderNo: order.order_no,
-    time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-    items
-  };
-  doPrint(buildKOTBytes(kotOrder));
   const newTotal = items.reduce((s, it) => s + it.price * it.qty, 0);
-  await supa.from('orders').update({ status: 'accepted', items, subtotal: newTotal, total: newTotal }).eq('id', order.id);
   delete state.onlineOrderEdits[order.id];
-  render();
+  // accepting prints the bill straight away (no separate KOT); customer sees "Being prepared"
+  printBillAndCheckout('accepted');
+  await sbRun(supa.from('orders').update({ items, subtotal: newTotal, total: newTotal }).eq('id', order.id));
 }
 
 function changeOnlineItemQty(orderId, idx, delta) {
