@@ -2085,26 +2085,34 @@ function billTs(o) {
     return new Date(y, m - 1, d, hh, mm).getTime() || 0;
   } catch (e) { return 0; }
 }
+function billRow(o) {
+  return { order_no: String(o.orderNo), brand: o.brand, bill_date: o.date, bill_time: o.time, items: o.items,
+    subtotal: o.subtotal || 0, discount_amt: o.discountAmt || 0, cgst_amt: o.cgstAmt || 0, sgst_amt: o.sgstAmt || 0, total: o.total || 0 };
+}
+function rowToBill(r) {
+  const o = { orderNo: isNaN(Number(r.order_no)) ? r.order_no : Number(r.order_no), brand: r.brand || 'Aricee', date: r.bill_date, time: r.bill_time,
+    items: r.items || [], subtotal: Number(r.subtotal), discountAmt: Number(r.discount_amt), cgstAmt: Number(r.cgst_amt), sgstAmt: Number(r.sgst_amt), total: Number(r.total) };
+  o.ts = billTs(o) || new Date(r.created_at).getTime();
+  return o;
+}
 async function pushBills(list) {
   if (!supa || !state.session || !list.length) return;
-  try {
-    await supa.from('bills').upsert(list.map(o => ({ id: billKey(o), data: { ...o, ts: billTs(o) } })));
-  } catch (e) { /* history table not set up yet: bills stay on this device */ }
+  try { await supa.from('bills').insert(list.map(billRow)); } catch (e) { /* bills stay on this device */ }
 }
 async function syncBills() {
   if (!supa || !state.session) return;
   try {
-    const { data, error } = await supa.from('bills').select('id, data').order('created_at', { ascending: false }).limit(500);
+    const { data, error } = await supa.from('bills').select('*').order('created_at', { ascending: false }).limit(500);
     if (error || !data) return;
     const byKey = new Map();
-    data.forEach(r => { if (r.data) byKey.set(r.id, r.data); });
+    data.forEach(r => { const o = rowToBill(r); byKey.set(billKey(o), o); });
     const localOnly = state.orders.filter(o => !byKey.has(billKey(o)));
-    state.orders.forEach(o => { if (!byKey.has(billKey(o))) byKey.set(billKey(o), { ...o, ts: billTs(o) }); });
-    state.orders = Array.from(byKey.values()).sort((a, b) => billTs(b) - billTs(a)).slice(0, 500);
+    localOnly.forEach(o => byKey.set(billKey(o), { ...o, ts: billTs(o) }));
+    state.orders = Array.from(byKey.values()).sort((x, y) => billTs(y) - billTs(x)).slice(0, 500);
     persist();
     render();
     if (localOnly.length) pushBills(localOnly); // upload anything only this device had
-  } catch (e) { /* table missing: ignore */ }
+  } catch (e) { /* ignore */ }
 }
 
 /* ---------- notification sound ---------- */
