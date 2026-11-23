@@ -1560,19 +1560,25 @@ function escBytesToLines(bytes) {
   if (buf.length) flush();
   return lines;
 }
+const FONT_STACKS = {
+  courier: '"Courier New", Courier, monospace',
+  consolas: 'Consolas, "Lucida Console", monospace',
+  lucida: '"Lucida Console", Monaco, monospace',
+  system: 'monospace',
+};
 function printViaBrowser(bytes) {
   const w = state.settings.paperWidth;                 // characters per line
   const widthMm = (state.settings.paperMm || (w >= 42 ? 80 : 58)) === 58 ? 48 : 72;                   // printable width of 80mm / 58mm paper
   const fontMm = (widthMm / (w * 0.6)).toFixed(3);     // monospace glyph is ~0.6em wide
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const html = escBytesToLines(bytes).map(l =>
-    `<div style="text-align:${l.align};font-weight:${l.bold ? 700 : 400};font-size:${(fontMm * l.size).toFixed(3)}mm;min-height:${(fontMm * 1.3 * l.size).toFixed(3)}mm">${esc(l.text)}</div>`
+    `<div style="text-align:${l.align};font-weight:${(l.bold || state.settings.billBold) ? 700 : 400};font-size:${(fontMm * l.size).toFixed(3)}mm;min-height:${(fontMm * 1.3 * l.size).toFixed(3)}mm">${esc(l.text)}</div>`
   ).join('');
   const doc = `<!doctype html><html><head><meta charset="utf-8"><title>Print</title><style>
     @page { margin: 0; }
     html, body { margin: 0; padding: 0; background: #fff; }
     body { width: ${widthMm}mm; padding: 2mm 0 6mm 2mm; color: #000;
-      font-family: "Courier New", Courier, monospace; line-height: 1.3; }
+      font-family: ${FONT_STACKS[state.settings.billFont] || FONT_STACKS.courier}; line-height: 1.3; }
     div { white-space: pre; overflow: hidden; }
   </style></head><body>${html}</body></html>`;
   const frame = document.createElement('iframe');
@@ -1965,6 +1971,15 @@ function renderSettings() {
           <option value="browser" ${s.printMode==='browser'?'selected':''}>Always use the print dialog (USB / wired printer)</option>
           <option value="rawbt" ${s.printMode==='rawbt'?'selected':''}>Always use RawBT / Bluetooth</option>
         </select>
+        <p class="helptext" style="margin:14px 0 6px;">Bill font (print dialog only)</p>
+        <select id="s-billfont">
+          ${[['courier','Courier New (default)'],['consolas','Consolas'],['lucida','Lucida Console'],['system','System monospace']]
+            .map(([v, l]) => `<option value="${v}" ${(s.billFont||'courier')===v?'selected':''}>${l}</option>`).join('')}
+        </select>
+        <div style="display:flex;align-items:center;gap:10px;margin:10px 0 0;">
+          <input type="checkbox" id="s-billbold" ${s.billBold?'checked':''} style="width:auto;">
+          <label style="margin:0;">Bold the whole bill (darker print)</label>
+        </div>
         <p class="helptext" style="margin:14px 0 6px;">Paper width</p>
         <select id="s-paper">
           ${(() => { const mm = s.paperMm || (s.paperWidth >= 42 ? 80 : 58); const cur = s.paperWidth + ':' + mm;
@@ -2091,6 +2106,8 @@ function attachHandlers() {
     const [pw, pmm] = document.getElementById('s-paper').value.split(':').map(Number);
     state.settings.paperWidth = pw; state.settings.paperMm = pmm;
     state.settings.printMode = document.getElementById('s-printmode').value;
+    state.settings.billFont = document.getElementById('s-billfont').value;
+    state.settings.billBold = document.getElementById('s-billbold').checked;
     persist();
     render();
     toast('Settings saved.');
