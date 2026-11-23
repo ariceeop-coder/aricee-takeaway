@@ -1432,7 +1432,7 @@ function buildBillBytes(order, totals) {
   wrapText(brandName, w).forEach(ln => push(textToBytes(ln + '\n')));
   push([0x1B, 0x45, 0x00]);
   push(textToBytes('Takeaway Bill\n'));
-  if (state.settings.gstEnabled && state.settings.gstin) push(textToBytes('GSTIN: ' + state.settings.gstin + '\n'));
+  if (state.settings.gstEnabled && state.settings.gstin && (totals.cgstAmt > 0 || totals.sgstAmt > 0)) push(textToBytes('GSTIN: ' + state.settings.gstin + '\n'));
   push([0x1B, 0x61, 0x00]);
   push(textToBytes('-'.repeat(w) + '\n'));
   push(textToBytes(padLine('Bill #' + order.orderNo, order.time, w) + '\n'));
@@ -1452,7 +1452,7 @@ function buildBillBytes(order, totals) {
   if (totals.discountAmt > 0) {
     push(textToBytes(padLine('Discount', '-Rs.' + totals.discountAmt.toFixed(2), w) + '\n'));
   }
-  if (state.settings.gstEnabled) {
+  if (state.settings.gstEnabled && (totals.cgstAmt > 0 || totals.sgstAmt > 0)) { // never print GST lines with a zero amount
     push(textToBytes(padLine('CGST ' + state.settings.cgst + '%', 'Rs.' + totals.cgstAmt.toFixed(2), w) + '\n'));
     push(textToBytes(padLine('SGST ' + state.settings.sgst + '%', 'Rs.' + totals.sgstAmt.toFixed(2), w) + '\n'));
   }
