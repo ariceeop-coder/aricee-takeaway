@@ -1561,25 +1561,40 @@ function escBytesToLines(bytes) {
   return lines;
 }
 const FONT_STACKS = {
+  arial: 'Arial, "Segoe UI", Roboto, Helvetica, sans-serif',
+  verdana: 'Verdana, Geneva, Tahoma, sans-serif',
   courier: '"Courier New", Courier, monospace',
   consolas: 'Consolas, "Lucida Console", monospace',
   lucida: '"Lucida Console", Monaco, monospace',
   system: 'monospace',
 };
 function printViaBrowser(bytes) {
-  const w = state.settings.paperWidth;                 // characters per line
-  const widthMm = (state.settings.paperMm || (w >= 42 ? 80 : 58)) === 58 ? 48 : 72;                   // printable width of 80mm / 58mm paper
-  const fontMm = (widthMm / (w * 0.6)).toFixed(3);     // monospace glyph is ~0.6em wide
+  const w = state.settings.paperWidth;                 // characters per line (also sets the text size)
+  const widthMm = (state.settings.paperMm || (w >= 42 ? 80 : 58)) === 58 ? 48 : 72;   // printable width of 80mm / 58mm paper
+  const fontKey = FONT_STACKS[state.settings.billFont] ? state.settings.billFont : 'arial';
+  const proportional = fontKey === 'arial' || fontKey === 'verdana';
+  const fontMm = (widthMm / (w * (proportional ? 0.52 : 0.6))).toFixed(3);   // monospace glyph ~0.6em, sans ~0.52em
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const html = escBytesToLines(bytes).map(l =>
-    `<div style="text-align:${l.align};font-weight:${(l.bold || state.settings.billBold) ? 700 : 400};font-size:${(fontMm * l.size).toFixed(3)}mm;min-height:${(fontMm * 1.3 * l.size).toFixed(3)}mm">${esc(l.text)}</div>`
-  ).join('');
+  const wt = l => ((l.bold || state.settings.billBold) ? 700 : 400);
+  const lines = escBytesToLines(bytes);
+  const html = lines.map(l => {
+    const fs = (fontMm * l.size).toFixed(3) + 'mm';
+    if (!proportional) {
+      return `<div style="text-align:${l.align};font-weight:${wt(l)};font-size:${fs};min-height:${(fontMm * 1.3 * l.size).toFixed(3)}mm">${esc(l.text)}</div>`;
+    }
+    const t = l.text.trim();
+    if (/^-{8,}$/.test(t)) return '<div style="border-top:0.3mm dashed #000;margin:1.2mm 0"></div>';
+    if (!t) return '<div style="height:2.5mm"></div>';
+    const m = l.align === 'left' ? l.text.match(/^(.*\S)\s{2,}(\S.*)$/) : null;
+    if (m) return `<div style="display:flex;justify-content:space-between;gap:2mm;font-weight:${wt(l)};font-size:${fs}"><span>${esc(m[1].trim())}</span><span style="white-space:nowrap">${esc(m[2].trim())}</span></div>`;
+    return `<div style="text-align:${l.align};font-weight:${wt(l)};font-size:${fs}">${esc(t)}</div>`;
+  }).join('');
   const doc = `<!doctype html><html><head><meta charset="utf-8"><title>Print</title><style>
     @page { margin: 0; }
     html, body { margin: 0; padding: 0; background: #fff; }
     body { width: ${widthMm}mm; padding: 2mm 0 6mm 2mm; color: #000;
-      font-family: ${FONT_STACKS[state.settings.billFont] || FONT_STACKS.courier}; line-height: 1.3; }
-    div { white-space: pre; overflow: hidden; }
+      font-family: ${FONT_STACKS[fontKey]}; line-height: 1.3; }
+    div { ${proportional ? 'white-space: normal;' : 'white-space: pre;'} overflow: hidden; }
   </style></head><body>${html}</body></html>`;
   const frame = document.createElement('iframe');
   frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
@@ -1976,8 +1991,8 @@ function renderSettings() {
         </select>
         <p class="helptext" style="margin:14px 0 6px;">Bill font (print dialog only)</p>
         <select id="s-billfont">
-          ${[['courier','Courier New (default)'],['consolas','Consolas'],['lucida','Lucida Console'],['system','System monospace']]
-            .map(([v, l]) => `<option value="${v}" ${(s.billFont||'courier')===v?'selected':''}>${l}</option>`).join('')}
+          ${[['arial','Arial (clean, recommended)'],['verdana','Verdana (wide, very readable)'],['courier','Courier New (typewriter)'],['consolas','Consolas'],['lucida','Lucida Console'],['system','System monospace']]
+            .map(([v, l]) => `<option value="${v}" ${(s.billFont||'arial')===v?'selected':''}>${l}</option>`).join('')}
         </select>
         <div style="display:flex;align-items:center;gap:10px;margin:10px 0 0;">
           <input type="checkbox" id="s-billbold" ${s.billBold?'checked':''} style="width:auto;">
