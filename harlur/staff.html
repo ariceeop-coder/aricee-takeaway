@@ -479,12 +479,34 @@
     margin: 0 0 12px;
   }
   a.link { color: var(--orange-dark); font-weight: 600; }
+
+  /* ---- item customisation popup ---- */
+  .cz-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 90; display: flex; align-items: flex-end; justify-content: center; }
+  .cz-sheet { background: var(--surface); width: 100%; max-width: 560px; max-height: 92vh; border-radius: 18px 18px 0 0; display: flex; flex-direction: column; overflow: hidden; }
+  .cz-head { padding: 16px 16px 8px; display: flex; gap: 10px; align-items: flex-start; }
+  .cz-head h3 { margin: 0; font-size: 16.5px; font-weight: 800; line-height: 1.3; }
+  .cz-head button { margin-left: auto; border: none; background: var(--surface-2); width: 30px; height: 30px; border-radius: 50%; font-size: 16px; cursor: pointer; color: var(--text); }
+  .cz-body { overflow-y: auto; padding: 0 16px 10px; flex: 1; }
+  .cz-group { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+  .cz-group h4 { margin: 0 0 2px; font-size: 14px; font-weight: 800; }
+  .cz-hint { font-size: 11.5px; color: var(--text-soft); margin-bottom: 6px; }
+  .cz-hint b { color: #B23A2E; }
+  .cz-opt { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 14px; cursor: pointer; }
+  .cz-opt input { width: 18px; height: 18px; flex: none; accent-color: var(--orange); }
+  .cz-opt .p { margin-left: auto; color: var(--text-soft); font-weight: 600; font-size: 13px; }
+  .cz-err { color: #B23A2E; font-size: 12.5px; font-weight: 600; padding: 0 16px 6px; }
+  .cz-foot { padding: 10px 16px 14px; border-top: 1px solid var(--line); display: flex; gap: 10px; align-items: center; }
+  .cz-qty { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 10px; height: 44px; }
+  .cz-qty button { border: none; background: none; width: 36px; font-size: 19px; font-weight: 700; height: 42px; cursor: pointer; color: var(--text); }
+  .cz-qty span { min-width: 20px; text-align: center; font-weight: 800; }
+  .cz-add { flex: 1; height: 44px; border: none; border-radius: 10px; background: var(--orange); color: #fff; font-weight: 800; font-size: 14.5px; display: flex; justify-content: space-between; align-items: center; padding: 0 14px; cursor: pointer; font-family: inherit; }
 </style>
 </head>
 <body>
 <div id="app"></div>
 <div class="toast" id="toast"></div>
 
+<script src="../menu-extras.js"></script>
 <script>
 /* ---------- supabase ---------- */
 const SUPABASE_URL = 'https://dgaurjpzgwyhwilhjowq.supabase.co';
@@ -1230,10 +1252,20 @@ async function sbRun(query) {
   return !error;
 }
 
+
+/* ---------- customisation data (must exist before the menu loads) ---------- */
+const X = window.MENU_EXTRAS || { groups: {}, itemGroups: {}, info: {}, newItems: [] };
+const OUTLET_BRAND = 'Harlur', OUTLET_ADD = 10;
+function withNewItems(list) {
+  const have = new Set(list.map(m => m.id));
+  const add = (X.newItems || []).filter(n => !have.has(n.id))
+    .map(n => ({ id: n.id, category: n.category, name: n.name, price: Number(n.price) + OUTLET_ADD, brand: OUTLET_BRAND }));
+  return list.concat(add);
+}
 function loadMenu() {
   const storedVersion = DB.load('harlur_billing_menu_version', 0);
-  if (storedVersion < MENU_VERSION) return DEFAULT_MENU;
-  return DB.load('harlur_billing_menu', DEFAULT_MENU);
+  if (storedVersion < MENU_VERSION) return withNewItems(DEFAULT_MENU);
+  return withNewItems(DB.load('harlur_billing_menu', DEFAULT_MENU));
 }
 
 /* ---------- happy hour: 50% off Lite Bites & Wraps, 4pm-7pm, pickup only ---------- */
@@ -1315,22 +1347,90 @@ function nextOrderNo() {
   return state.counter.n;
 }
 
+
+/* ---------- item customisation (chutney, sundal, dal, gravy, extras, salads) ---------- */
+function groupsFor(item) { return (X.itemGroups[item.id] || []).map(k => ({ key: k, ...X.groups[k] })).filter(g => g.options); }
+function modStr(m) { return m.raw || (m.g + ': ' + m.n + (m.p ? ' (+' + m.p + ')' : '')); }
+function lineKeyOf(c) { return c.key || c.itemId; }
+const cz = { item: null, sel: {}, qty: 1, error: '' };
+function czMods() {
+  const out = [];
+  groupsFor(cz.item).forEach(g => (cz.sel[g.key] || []).forEach(id => {
+    const o = g.options.find(o => o.id === id);
+    if (o) out.push({ g: g.title.replace(/^Choose your /, '').replace(/^./, c => c.toUpperCase()), n: o.name, p: Number(o.price) || 0, id });
+  }));
+  return out;
+}
+function openCustomize(item) {
+  cz.item = item; cz.qty = 1; cz.error = ''; cz.sel = {};
+  groupsFor(item).forEach(g => { cz.sel[g.key] = g.default ? [g.default] : []; });
+  drawCustomize();
+}
+function closeCustomize() { cz.item = null; const r = document.getElementById('cz-root'); if (r) r.innerHTML = ''; }
+function drawCustomize() {
+  let root = document.getElementById('cz-root');
+  if (!root) { root = document.createElement('div'); root.id = 'cz-root'; document.body.appendChild(root); }
+  const body0 = root.querySelector('.cz-body'); const scroll = body0 ? body0.scrollTop : 0;
+  const item = cz.item, groups = groupsFor(item);
+  const unit = effectivePrice(item) + czMods().reduce((s, m) => s + m.p, 0);
+  root.innerHTML = `
+    <div class="cz-overlay" id="cz-ov"><div class="cz-sheet">
+      <div class="cz-head"><h3>${escapeHtml(item.name)}</h3><button id="cz-x">✕</button></div>
+      <div class="cz-body">
+        ${groups.map(g => `
+          <div class="cz-group" data-g="${g.key}">
+            <h4>${escapeHtml(g.title)}</h4>
+            <div class="cz-hint">${g.required ? '<b>Required</b> · ' : 'Optional · '}${g.type === 'multi' ? 'Select any' : 'Select 1'}</div>
+            ${g.options.map(o => `
+              <label class="cz-opt"><input type="${g.type === 'multi' ? 'checkbox' : 'radio'}" name="cz-${g.key}" value="${escapeHtml(o.id)}" ${(cz.sel[g.key] || []).includes(o.id) ? 'checked' : ''}>
+              <span>${escapeHtml(o.name)}</span><span class="p">${o.price ? '+Rs.' + o.price : ''}</span></label>`).join('')}
+          </div>`).join('')}
+      </div>
+      ${cz.error ? `<div class="cz-err">${escapeHtml(cz.error)}</div>` : ''}
+      <div class="cz-foot">
+        <div class="cz-qty"><button id="cz-m">−</button><span>${cz.qty}</span><button id="cz-p">+</button></div>
+        <button class="cz-add" id="cz-add"><span>Add to order</span><span>Rs.${(unit * cz.qty).toFixed(2)}</span></button>
+      </div>
+    </div></div>`;
+  const nb = root.querySelector('.cz-body'); if (nb) nb.scrollTop = scroll;
+  document.getElementById('cz-ov').onclick = e => { if (e.target.id === 'cz-ov') closeCustomize(); };
+  document.getElementById('cz-x').onclick = closeCustomize;
+  document.getElementById('cz-m').onclick = () => { if (cz.qty > 1) { cz.qty--; drawCustomize(); } };
+  document.getElementById('cz-p').onclick = () => { cz.qty++; drawCustomize(); };
+  root.querySelectorAll('.cz-group input').forEach(inp => inp.onchange = () => {
+    const key = inp.closest('.cz-group').dataset.g;
+    if (X.groups[key].type === 'multi') {
+      const cur = new Set(cz.sel[key] || []); inp.checked ? cur.add(inp.value) : cur.delete(inp.value); cz.sel[key] = [...cur];
+    } else cz.sel[key] = [inp.value];
+    cz.error = ''; drawCustomize();
+  });
+  document.getElementById('cz-add').onclick = () => {
+    const miss = groups.find(g => g.required && (cz.sel[g.key] || []).length === 0);
+    if (miss) { cz.error = 'Please choose: ' + miss.title.replace(/^Choose your /, ''); drawCustomize(); return; }
+    const it = cz.item, mods = czMods(), q = cz.qty;
+    closeCustomize(); addToCart(it, mods, q);
+  };
+}
+
 /* ---------- cart ops ---------- */
-function addToCart(item) {
-  const existing = state.cart.find(c => c.itemId === item.id);
-  if (existing) existing.qty += 1;
+function addToCart(item, mods, qty) {
+  mods = mods || []; qty = qty || 1;
+  const key = item.id + '|' + mods.map(m => m.id).sort().join(',');
+  const extra = mods.reduce((s, m) => s + (m.p || 0), 0);
+  const existing = state.cart.find(c => lineKeyOf(c) === key);
+  if (existing) existing.qty += qty;
   else {
-    const price = effectivePrice(item);
-    state.cart.push({ itemId: item.id, name: item.name, price, originalPrice: item.price, happyHour: price < item.price, qty: 1 });
+    const base = effectivePrice(item);
+    state.cart.push({ key, itemId: item.id, name: item.name, price: base + extra, originalPrice: item.price + extra, happyHour: base < item.price, mods, qty });
   }
   persist();
   render();
 }
-function changeQty(itemId, delta) {
-  const line = state.cart.find(c => c.itemId === itemId);
+function changeQty(key, delta) {
+  const line = state.cart.find(c => lineKeyOf(c) === key);
   if (!line) return;
   line.qty += delta;
-  if (line.qty <= 0) state.cart = state.cart.filter(c => c.itemId !== itemId);
+  if (line.qty <= 0) state.cart = state.cart.filter(c => lineKeyOf(c) !== key);
   persist();
   render();
 }
@@ -1415,6 +1515,7 @@ function buildKOTBytes(order) {
       if (idx === 0) push(textToBytes(padLine(ln, '', w - 5) + '  x' + it.qty + '\n'));
       else push(textToBytes(ln + '\n'));
     });
+    (it.mods || []).forEach(m => wrapText('  + ' + m, w).forEach(ln => push(textToBytes(ln + '\n'))));
   });
   push(textToBytes('-'.repeat(w) + '\n'));
   push(textToBytes('\n\n\n'));
@@ -1446,6 +1547,7 @@ function buildBillBytes(order, totals) {
       if (idx === lines.length - 1) push(textToBytes(padLine(ln, 'Rs.' + lineTotal, w) + '\n'));
       else push(textToBytes(ln + '\n'));
     });
+    (it.mods || []).forEach(m => wrapText('  + ' + m, w).forEach(ln => push(textToBytes(ln + '\n'))));
   });
   push(textToBytes('-'.repeat(w) + '\n'));
   push(textToBytes(padLine('Subtotal', 'Rs.' + totals.subtotal.toFixed(2), w) + '\n'));
@@ -1629,7 +1731,7 @@ function sendKOT() {
     orderNo: state.currentOrderNo,
     brand: state.brand,
     time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-    items: state.cart.map(c => ({ name: c.name + (c.happyHour ? ' (Happy Hour -50%)' : ''), qty: c.qty, price: c.price }))
+    items: state.cart.map(c => ({ name: c.name + (c.happyHour ? ' (Happy Hour -50%)' : ''), qty: c.qty, price: c.price, mods: (c.mods || []).map(modStr) }))
   };
   doPrint(buildKOTBytes(order));
   persist();
@@ -1644,7 +1746,7 @@ function printBillAndCheckout(finalStatus) {
     brand: state.brand,
     date: now.toLocaleDateString('en-IN'),
     time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-    items: state.cart.map(c => ({ name: c.name + (c.happyHour ? ' (Happy Hour -50%)' : ''), qty: c.qty, price: c.price })),
+    items: state.cart.map(c => ({ name: c.name + (c.happyHour ? ' (Happy Hour -50%)' : ''), qty: c.qty, price: c.price, mods: (c.mods || []).map(modStr) })),
     ts: Date.now(),
     ...totals
   };
@@ -1795,7 +1897,7 @@ function renderOnlineOrders() {
         <div class="oh-meta">${new Date(o.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
         ${items.map((it, idx) => `
           <div class="menu-item-row" style="padding:6px 0;">
-            <span class="mname" style="font-size:13px;">${escapeHtml(it.name)}</span>
+            <span class="mname" style="font-size:13px;">${escapeHtml(it.name)}${(it.mods || []).length ? `<br><span style="font-weight:400;color:var(--text-soft);font-size:12px;">${escapeHtml(it.mods.join(" · "))}</span>` : ""}</span>
             <div class="qtystep" style="color:var(--text);">
               <button data-oqty="${o.id}:${idx}:-1" class="icon-btn" style="border:1px solid var(--line);border-radius:8px;width:24px;height:24px;padding:0;">−</button>
               <span>${it.qty}</span>
@@ -1806,7 +1908,7 @@ function renderOnlineOrders() {
         ${items.length === 0 ? `<p class="helptext">All items removed — Cancel this order instead.</p>` : ''}
         <div style="display:flex;gap:8px;margin-top:8px;">
           <button class="btn-secondary" data-cancel-online="${o.id}" style="color:var(--danger);">Cancel</button>
-          <button class="btn-primary" data-accept="${o.id}" ${items.length===0?'disabled':''}>Accept & Print KOT</button>
+          <button class="btn-primary" data-accept="${o.id}" ${items.length===0?'disabled':''}>Accept & Print Bill</button>
         </div>
       </div>
     `;
@@ -1827,7 +1929,7 @@ function renderOrder() {
       <h2>${cat}</h2>
       <div class="item-grid">
         ${brandMenu().filter(m => m.category === cat).map(item => {
-          const inCart = state.cart.find(c => c.itemId === item.id);
+          const inCartQty = state.cart.filter(c => c.itemId === item.id).reduce((t, c) => t + c.qty, 0); const inCart = inCartQty ? { qty: inCartQty } : null;
           const discounted = hhActive && isHappyHourCategory(item.category) && item.price > 0;
           const price = discounted ? effectivePrice(item) : item.price;
           return `
@@ -1859,12 +1961,12 @@ function cartBar() {
             <div class="cart-line">
               <div style="flex:1">
                 <div class="cname">${escapeHtml(c.name)}${c.happyHour ? ' <span style="color:#ffb27a;font-weight:800;">(-50%)</span>' : ''}</div>
-                <div class="cprice">Rs.${c.price.toFixed(2)} each</div>
+                ${(c.mods || []).length ? `<div class="cprice">${escapeHtml(c.mods.map(modStr).join(", "))}</div>` : ""}<div class="cprice">Rs.${c.price.toFixed(2)} each</div>
               </div>
               <div class="qtystep">
-                <button data-qty="${c.itemId}:-1">−</button>
+                <button data-qty="${lineKeyOf(c)}:-1">−</button>
                 <span>${c.qty}</span>
-                <button data-qty="${c.itemId}:1">+</button>
+                <button data-qty="${lineKeyOf(c)}:1">+</button>
               </div>
             </div>
           `).join('')}
@@ -2029,7 +2131,7 @@ function attachHandlers() {
   });
   document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
     const item = state.menu.find(m => m.id === b.dataset.add);
-    if (item) addToCart(item);
+    if (item) { if (groupsFor(item).length) openCustomize(item); else addToCart(item); }
   });
   const goMenu = document.getElementById('go-menu');
   if (goMenu) goMenu.onclick = () => { state.tab = 'menu'; render(); };
@@ -2167,6 +2269,7 @@ async function loadMenuFromSupabase() {
   state.menu = data
     .filter(d => (d.brand || 'Aricee') === 'Aricee')
     .map(d => ({ id: d.id, category: d.category, name: d.name, price: Number(d.price) + 10, brand: 'Harlur' }));
+  state.menu = withNewItems(state.menu);
   persist();
   render();
 }
@@ -2279,7 +2382,7 @@ async function acceptOnlineOrder(order) {
   const HH_TAG = ' (Happy Hour -50%)';
   state.cart = items.map(it => {
     const hh = String(it.name).includes(HH_TAG);
-    return { itemId: 'online-' + Math.random(), name: hh ? it.name.replace(HH_TAG, '') : it.name, price: it.price, happyHour: hh, qty: it.qty };
+    return { itemId: 'online-' + Math.random(), mods: (it.mods || []).map(m => ({ raw: m })), name: hh ? it.name.replace(HH_TAG, '') : it.name, price: it.price, happyHour: hh, qty: it.qty };
   });
   state.currentOrderNo = order.order_no;
   state.currentSupabaseOrderId = order.id;

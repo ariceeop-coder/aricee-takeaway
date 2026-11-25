@@ -13,37 +13,37 @@ window.MENU_EXTRAS = {
     {
      "id": "794550753",
      "name": "1 Boiled Egg",
-     "price": 18.0
+     "price": 18
     },
     {
      "id": "744422529",
      "name": "Potato Pops",
-     "price": 50.0
+     "price": 50
     },
     {
      "id": "744422535",
      "name": "Paneer Pepper Pops",
-     "price": 89.0
+     "price": 89
     },
     {
      "id": "744422541",
      "name": "Grilled Chicken Tikka",
-     "price": 89.0
+     "price": 89
     },
     {
      "id": "744422544",
      "name": "Grilled Chicken Naati Chilli",
-     "price": 89.0
+     "price": 89
     },
     {
      "id": "744422547",
      "name": "Grilled Chicken Ghee Roast",
-     "price": 89.0
+     "price": 89
     },
     {
      "id": "809564987",
      "name": "Soya Chunks",
-     "price": 69.0
+     "price": 69
     }
    ]
   },
@@ -125,23 +125,6 @@ window.MENU_EXTRAS = {
     }
    ]
   },
-  "rice": {
-   "title": "Rice",
-   "type": "single",
-   "required": false,
-   "options": [
-    {
-     "id": "770349875",
-     "name": "No Rice",
-     "price": 0
-    },
-    {
-     "id": "770349876",
-     "name": "Jeera Rice",
-     "price": 0
-    }
-   ]
-  },
   "vgravy": {
    "title": "Vegan gravy",
    "type": "single",
@@ -168,7 +151,7 @@ window.MENU_EXTRAS = {
     {
      "id": "804474074",
      "name": "Packed Separately",
-     "price": 6.0
+     "price": 6
     }
    ],
    "default": "804474073"
@@ -510,21 +493,6 @@ window.MENU_EXTRAS = {
    "dal",
    "gravy",
    "salad"
-  ],
-  "m43": [
-   "rice"
-  ],
-  "m44": [
-   "rice"
-  ],
-  "m45": [
-   "rice"
-  ],
-  "m46": [
-   "rice"
-  ],
-  "m47": [
-   "rice"
   ],
   "m48": [
    "extras",
@@ -1480,13 +1448,13 @@ window.MENU_EXTRAS = {
    "id": "n1",
    "category": "Duet Bowls",
    "name": "Dal Pappu and Rice Bowl",
-   "price": 99.5
+   "price": 100
   },
   {
    "id": "n2",
    "category": "Duet Bowls",
    "name": "Garlic Dal and Rice Bowl",
-   "price": 99.5
+   "price": 100
   },
   {
    "id": "n3",
@@ -1510,7 +1478,7 @@ window.MENU_EXTRAS = {
    "id": "n6",
    "category": "Duet Bowls",
    "name": "Egg Masala and Rice Bowl",
-   "price": 149.5
+   "price": 150
   },
   {
    "id": "n7",
