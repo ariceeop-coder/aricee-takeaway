@@ -144,6 +144,7 @@ const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const OUTLET = 'Aricee';            // order brand ('Aricee' or 'Harlur')
 const OUTLET_NAME = 'Aricee - The Indian Kitchen';
+const OUTLET_PLACE = 'Electronic City Phase 1';
 const PRICE_ADD = 0;        // Harlur charges Rs 10 more per item
 const X = window.MENU_EXTRAS || { hours: { open: 11, close: 23 }, groups: {}, itemGroups: {}, info: {}, newItems: [] };
 
@@ -393,7 +394,7 @@ function render() {
   app.innerHTML = `
     <div class="hero">
       <h1>${esc(OUTLET_NAME)}</h1>
-      <div class="sub">Takeaway · Traditionally Nutritious!</div>
+      <div class="sub">${esc(OUTLET_PLACE)} · Takeaway</div>
       <span class="hours ${open ? 'open' : 'closed'}"><span class="dot"></span>${open ? 'Open now · ' + fmtHour(X.hours.open) + ' – ' + fmtHour(X.hours.close) : 'Closed · opens at ' + fmtHour(X.hours.open)}</span>
     </div>
     ${open ? '' : `<div class="closed-banner">We are closed right now. You can look at the menu, and ordering opens daily from ${fmtHour(X.hours.open)} to ${fmtHour(X.hours.close)}.</div>`}
