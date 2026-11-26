@@ -1,6 +1,6 @@
 /* Customization options, descriptions and photos (from the Zomato menu export). Shared by customer and staff pages. */
 window.MENU_EXTRAS = {
- "payments": { "online": false },   // set to true once Razorpay keys are added in Supabase
+ "payments": { "online": true },   // set to true once Razorpay keys are added in Supabase
  "hours": {
   "open": 11,
   "close": 23
