@@ -1435,6 +1435,7 @@ function changeQty(key, delta) {
   render();
 }
 function clearCart() {
+  state.currentPayLabel = '';
   state.cart = [];
   state.currentOrderNo = null;
   state.currentSupabaseOrderId = null;
@@ -1563,6 +1564,7 @@ function buildBillBytes(order, totals) {
   push(textToBytes(padLine('TOTAL', 'Rs.' + totals.total.toFixed(2), Math.floor(w*0.85)) + '\n'));
   push([0x1D, 0x21, 0x00]);
   push(textToBytes('-'.repeat(w) + '\n'));
+  if (state.currentPayLabel) push(textToBytes(state.currentPayLabel + '\n'));
   push([0x1B, 0x61, 0x01]);
   push(textToBytes('Traditionally Nutritious!\n\n\n'));
   return bytes;
@@ -1894,15 +1896,15 @@ function renderOnlineOrders() {
       return `
       <div class="order-hist-item">
         <div class="oh-top"><span>#${o.order_no} · ${escapeHtml(o.brand)}</span><span>Rs.${total.toFixed(2)}</span></div>
-        <div class="oh-meta">${new Date(o.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
+        <div class="oh-meta">${new Date(o.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} · ${o.payment_status === 'paid' ? '<b style="color:#15803d;">PAID online</b>' : '<b style="color:#b45309;">Pay at counter</b>'}</div>
         ${items.map((it, idx) => `
           <div class="menu-item-row" style="padding:6px 0;">
             <span class="mname" style="font-size:13px;">${escapeHtml(it.name)}${(it.mods || []).length ? `<br><span style="font-weight:400;color:var(--text-soft);font-size:12px;">${escapeHtml(it.mods.join(" · "))}</span>` : ""}</span>
-            <div class="qtystep" style="color:var(--text);">
+            ${o.payment_status === 'paid' ? `<span style="font-weight:600;">× ${it.qty}</span>` : `<div class="qtystep" style="color:var(--text);">
               <button data-oqty="${o.id}:${idx}:-1" class="icon-btn" style="border:1px solid var(--line);border-radius:8px;width:24px;height:24px;padding:0;">−</button>
               <span>${it.qty}</span>
               <button data-oqty="${o.id}:${idx}:1" class="icon-btn" style="border:1px solid var(--line);border-radius:8px;width:24px;height:24px;padding:0;">+</button>
-            </div>
+            </div>`}
           </div>
         `).join('')}
         ${items.length === 0 ? `<p class="helptext">All items removed — Cancel this order instead.</p>` : ''}
@@ -2386,6 +2388,7 @@ async function acceptOnlineOrder(order) {
   });
   state.currentOrderNo = order.order_no;
   state.currentSupabaseOrderId = order.id;
+  state.currentPayLabel = order.payment_status === 'paid' ? 'PAID - Online (Razorpay)' : (order.payment_method === 'online' ? '' : 'To pay at counter');
   state.discount = { type: 'flat', value: 0 };
   state.tab = 'order';
   const newTotal = items.reduce((s, it) => s + it.price * it.qty, 0);
@@ -2406,16 +2409,32 @@ function changeOnlineItemQty(orderId, idx, delta) {
 }
 
 async function cancelOnlineOrder(orderId) {
+  const o = state.onlineOrders.find(x => x.id === orderId);
+  const paid = o && o.payment_status === 'paid';
   if (!confirm('Cancel this order? The customer will see it as cancelled.')) return;
+  let refund = false;
+  if (paid) refund = confirm('This order was PAID online (Rs.' + Number(o.total).toFixed(2) + ').\n\nRefund the full amount to the customer?\n\nOK = Yes, refund   Cancel = No refund');
   await supa.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
   delete state.onlineOrderEdits[orderId];
+  if (refund) {
+    const { data, error } = await supa.functions.invoke('refund-order', { body: { order_id: orderId } });
+    alert(error || !data || !data.ok ? 'Refund FAILED - please refund from the Razorpay dashboard. Order is cancelled.' : 'Refund started. The money returns to the customer in 5-7 working days.');
+  } else if (paid) alert('Cancelled WITHOUT refund. You can still refund later from the Razorpay dashboard.');
 }
 
 async function cancelCurrentOnlineOrder() {
   if (!state.currentSupabaseOrderId) return;
   if (!confirm('Cancel this order? The customer will see it as cancelled.')) return;
-  await supa.from('orders').update({ status: 'cancelled' }).eq('id', state.currentSupabaseOrderId);
+  const id = state.currentSupabaseOrderId;
+  const { data: row } = await supa.from('orders').select('payment_status,total').eq('id', id).maybeSingle();
+  const paid = row && row.payment_status === 'paid';
+  const refund = paid && confirm('This order was PAID online (Rs.' + Number(row.total).toFixed(2) + ').\n\nRefund the full amount to the customer?\n\nOK = Yes, refund   Cancel = No refund');
+  await supa.from('orders').update({ status: 'cancelled' }).eq('id', id);
   clearCart();
+  if (refund) {
+    const { data, error } = await supa.functions.invoke('refund-order', { body: { order_id: id } });
+    alert(error || !data || !data.ok ? 'Refund FAILED - please refund from the Razorpay dashboard. Order is cancelled.' : 'Refund started. The money returns to the customer in 5-7 working days.');
+  } else if (paid) alert('Cancelled WITHOUT refund. You can still refund later from the Razorpay dashboard.');
 }
 
 initAuth();

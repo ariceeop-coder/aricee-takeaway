@@ -129,6 +129,12 @@
   .status.cancelled { background: #FDEBEC; color: var(--bad); }
   .summary { text-align: left; margin: 22px auto 0; max-width: 420px; border: 1px solid var(--line); border-radius: 14px; padding: 6px 16px; }
   .summary .cl:last-child { border-bottom: none; }
+  .paybox { margin: 14px 0 4px; display: grid; gap: 8px; }
+  .paybox label { display: flex; gap: 10px; align-items: flex-start; padding: 11px 12px; border: 1.5px solid var(--line, #e4e4e7); border-radius: 12px; cursor: pointer; }
+  .paybox label.sel { border-color: var(--accent, #C8531C); background: #FFF6F0; }
+  .paybox input { margin-top: 3px; accent-color: var(--accent, #C8531C); }
+  .paybox b { display: block; font-size: 14px; } .paybox small { color: var(--text-soft); font-size: 12px; }
+  .payerr { color: var(--bad); font-size: 13px; font-weight: 600; margin: 8px 0 0; }
   .secondary { margin-top: 22px; background: #F0F0F2; border: none; border-radius: 12px; padding: 13px 20px; font-weight: 700; font-size: 14px; }
   .loading { padding: 70px 20px; text-align: center; color: var(--text-soft); }
 </style>
@@ -160,7 +166,8 @@ function unitBase(item) {
 }
 
 /* ---------- state ---------- */
-const state = { menu: [], cart: [], query: '', sheet: null, placedOrder: null, placing: false, activeCat: null };
+const PAY_ONLINE = !!(X.payments && X.payments.online);   // switched on once Razorpay keys are set up
+const state = { menu: [], cart: [], query: '', sheet: null, placedOrder: null, placing: false, activeCat: null, payMethod: PAY_ONLINE ? 'online' : 'counter', payError: '' };
 const rupee = n => 'Rs.' + (Math.round(n * 100) / 100).toString().replace(/\.(\d)$/, '.$10');
 function money(n) { return '₹' + (Math.round(n * 100) / 100).toString(); }
 function esc(s) { return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -315,11 +322,15 @@ function openCart() {
             <div class="tp">${money(c.price * c.qty)}</div>
           </div>`).join('')}
         <div class="bill"><div class="row t"><span>To pay</span><span>${money(total)}</span></div></div>
-        <p style="font-size:12px;color:var(--text-soft);margin:6px 0 0;">Takeaway · pay at the counter when you collect.</p>
+        ${PAY_ONLINE ? `<div class="paybox">
+          <label class="${state.payMethod === 'online' ? 'sel' : ''}"><input type="radio" name="pm" value="online" ${state.payMethod === 'online' ? 'checked' : ''}><span><b>Pay online</b><small>UPI, cards, wallets · secure payment by Razorpay</small></span></label>
+          <label class="${state.payMethod === 'counter' ? 'sel' : ''}"><input type="radio" name="pm" value="counter" ${state.payMethod === 'counter' ? 'checked' : ''}><span><b>Pay at counter</b><small>Pay when you collect your order</small></span></label>
+        </div>` : `<p style="font-size:12px;color:var(--text-soft);margin:6px 0 0;">Takeaway · pay at the counter when you collect.</p>`}
+        ${state.payError ? `<div class="payerr">${esc(state.payError)}</div>` : ''}
       </div>
       <div class="sheet-foot">
         <button class="primary" id="place" ${state.cart.length === 0 || state.placing || !isOpen() ? 'disabled' : ''}>
-          <span>${!isOpen() ? 'Closed right now' : state.placing ? 'Placing order…' : 'Place order'}</span><span>${money(total)}</span></button>
+          <span>${!isOpen() ? 'Closed right now' : state.placing ? (state.payMethod === 'online' ? 'Opening payment…' : 'Placing order…') : (PAY_ONLINE && state.payMethod === 'online' ? 'Pay & place order' : 'Place order')}</span><span>${money(total)}</span></button>
       </div>
     </div></div>`;
   document.body.style.overflow = 'hidden';
@@ -327,38 +338,75 @@ function openCart() {
   $('sx').onclick = closeSheet;
   document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => changeLine(b.dataset.m, -1));
   document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => changeLine(b.dataset.p, 1));
+  document.querySelectorAll('input[name=pm]').forEach(r => r.onchange = () => { state.payMethod = r.value; state.payError = ''; openCart(); });
   if ($('place')) $('place').onclick = placeOrder;
   if (state.cart.length === 0) { closeSheet(); render(); }
 }
 
-/* ---------- placing the order ---------- */
+/* ---------- placing the order (price is always re-calculated on the server) ---------- */
+function loadScript(src) {
+  return new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = () => rej(new Error('Could not load the payment window')); document.head.appendChild(el); });
+}
+async function fnCall(name, body) {
+  const { data, error } = await supa.functions.invoke(name, { body });
+  if (error) {
+    let msg = 'Something went wrong, please try again.';
+    try { const j = await error.context.json(); if (j && j.error) msg = j.error; } catch (_) {}
+    throw new Error(msg);
+  }
+  return data;
+}
+function orderPayload(method) {
+  return { brand: OUTLET, method, items: state.cart.map(c => ({ id: c.itemId, qty: c.qty, mods: c.mods.map(m => m.id) })) };
+}
+function showPlaced(data, paid) {
+  state.placedOrder = { id: data.order_id, order_no: data.order_no || null, status: paid ? 'awaiting_payment' : 'pending', paid: !!paid, lines: state.cart.slice(), total: data.total };
+  state.cart = []; state.placing = false; closeSheet(); render(); window.scrollTo(0, 0);
+  pollOrderStatus(data.order_id);
+}
 async function placeOrder() {
   if (state.cart.length === 0 || state.placing) return;
   if (!isOpen()) { alert('We are closed right now. Orders open at ' + fmtHour(X.hours.open) + '.'); return; }
-  state.placing = true; openCart();
-  const subtotal = cartTotal();
-  const { data, error } = await supa.rpc('place_order', {
-    p_brand: OUTLET,
-    p_items: state.cart.map(c => ({
-      name: c.name + (c.happyHour ? HH_TAG : ''), price: c.price, qty: c.qty,
-      mods: c.mods.map(m => m.g + ': ' + m.n + (m.p ? ' (+' + m.p + ')' : ''))
-    })),
-    p_subtotal: subtotal, p_discount_amt: 0, p_total: subtotal
-  });
-  state.placing = false;
-  if (error || !data || !data[0]) { alert('Could not place your order — please try again.'); openCart(); return; }
-  state.placedOrder = { id: data[0].id, order_no: data[0].order_no, status: 'pending', lines: state.cart.slice(), total: subtotal };
-  state.cart = []; closeSheet(); render(); window.scrollTo(0, 0);
-  pollOrderStatus(data[0].id);
+  const method = PAY_ONLINE ? state.payMethod : 'counter';
+  state.placing = true; state.payError = ''; openCart();
+  let data;
+  try { data = await fnCall('create-order', orderPayload(method)); }
+  catch (e) { state.placing = false; state.payError = e.message; openCart(); return; }
+  if (Math.abs(data.total - cartTotal()) > 0.01) {      // prices changed since the page loaded
+    if (method === 'counter') { showPlaced(data, false); return; }
+    state.placing = false; state.payError = 'Prices were updated. Your total is now ' + money(data.total) + ' - please review and try again.'; openCart(); return;
+  }
+  if (method === 'counter') { showPlaced(data, false); return; }
+  try {
+    await loadScript('https://checkout.razorpay.com/v1/checkout.js');
+    const rzp = new window.Razorpay({
+      key: data.key_id, amount: data.amount, currency: 'INR', order_id: data.razorpay_order_id,
+      name: OUTLET_NAME, description: 'Takeaway order · ' + OUTLET_PLACE,
+      theme: { color: '#C8531C' },
+      handler: async (resp) => {
+        try {
+          await fnCall('verify-payment', { order_id: data.order_id, razorpay_payment_id: resp.razorpay_payment_id, razorpay_signature: resp.razorpay_signature });
+        } catch (_) { /* the payment webhook confirms it anyway */ }
+        showPlaced(data, true);
+      },
+      modal: { ondismiss: () => { state.placing = false; state.payError = 'Payment was not completed. You have not been charged - tap to try again.'; openCart(); } },
+    });
+    rzp.on('payment.failed', () => { state.payError = 'Payment failed. You can try again.'; });
+    rzp.open();
+  } catch (e) { state.placing = false; state.payError = e.message; openCart(); }
 }
 function pollOrderStatus(orderId) {
   const iv = setInterval(async () => {
     if (!state.placedOrder || state.placedOrder.id !== orderId) { clearInterval(iv); return; }
-    const { data, error } = await supa.rpc('get_order_status', { p_id: orderId });
-    if (!error && data && data !== state.placedOrder.status) { state.placedOrder = { ...state.placedOrder, status: data }; render(); }
-  }, 4000);
+    const { data, error } = await supa.rpc('get_order_info', { p_id: orderId });
+    const r = Array.isArray(data) ? data[0] : data;
+    if (error || !r) return;
+    const cur = state.placedOrder;
+    if (r.status !== cur.status || (r.order_no && r.order_no !== cur.order_no)) { state.placedOrder = { ...cur, status: r.status, order_no: r.order_no || cur.order_no }; render(); }
+  }, 3000);
 }
 function statusLabel(s) {
+  if (s === 'awaiting_payment') return { text: 'Confirming your payment…', cls: '' };
   if (s === 'cancelled') return { text: 'Order cancelled — please check with the counter', cls: 'cancelled' };
   if (s === 'accepted') return { text: 'Order accepted — being prepared', cls: 'accepted' };
   if (s === 'billed') return { text: 'Ready — please collect', cls: 'accepted' };
@@ -372,8 +420,8 @@ function render() {
     const st = statusLabel(state.placedOrder.status);
     app.innerHTML = `
       <div class="confirm">
-        <div class="tick">✓</div><h2>Order placed!</h2>
-        <div class="ordno">#${state.placedOrder.order_no}</div>
+        <div class="tick">✓</div><h2>${state.placedOrder.paid ? 'Payment received!' : 'Order placed!'}</h2>
+        <div class="ordno">${state.placedOrder.order_no ? '#' + state.placedOrder.order_no : '…'}</div>
         <div class="status ${st.cls}">${st.text}</div>
         <div class="summary">
           ${state.placedOrder.lines.map(c => `<div class="cl"><div style="flex:1"><div class="n">${c.qty} × ${esc(c.name)}</div>${c.mods.length ? `<div class="m">${esc(modsLabel(c.mods))}</div>` : ''}</div><div class="tp">${money(c.price * c.qty)}</div></div>`).join('')}
