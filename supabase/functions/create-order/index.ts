@@ -12,6 +12,14 @@ Deno.serve(async (req) => {
     if (!isOpen()) return json({ error: 'We are closed right now. Orders open daily from 11 AM to 11 PM.' }, 403);
 
     const db = admin();
+    const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim().slice(0, 64) || null;
+    // unpaid online orders older than 30 minutes are expired (a late payment is flagged by the webhook)
+    await db.from('orders').update({ status: 'expired' }).eq('status', 'awaiting_payment').lt('created_at', new Date(Date.now() - 30 * 60 * 1000).toISOString());
+    // per-device limit: at most 6 orders from one network address in 10 minutes
+    if (ip) {
+      const { count: mine } = await db.from('orders').select('id', { count: 'exact', head: true }).eq('client_ip', ip).gte('created_at', new Date(Date.now() - 10 * 60 * 1000).toISOString());
+      if ((mine ?? 0) >= 6) return json({ error: 'Too many orders from this device. Please wait a few minutes or order at the counter.' }, 429);
+    }
     // simple abuse guard: too many unpaid online orders created in the last 5 minutes
     const since = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     const { count } = await db.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'awaiting_payment').gte('created_at', since);
@@ -27,7 +35,7 @@ Deno.serve(async (req) => {
     const { data: order, error: oe } = await db.from('orders').insert({
       brand, items: priced.items, subtotal: priced.total, discount_amt: 0, total: priced.total,
       status: method === 'online' ? 'awaiting_payment' : 'pending',
-      payment_method: method, payment_status: 'unpaid', customer_note: note,
+      payment_method: method, payment_status: 'unpaid', customer_note: note, client_ip: ip,
     }).select('id, order_no').single();
     if (oe || !order) throw new Error('Could not save your order');
 

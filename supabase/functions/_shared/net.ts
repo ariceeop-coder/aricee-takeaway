@@ -1,6 +1,6 @@
 // Shared helpers for the payment functions (CORS, signatures, Razorpay calls).
 export const CORS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://ariceeop-coder.github.io',
   'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };

@@ -17,6 +17,10 @@ Deno.serve(async (req) => {
       if (pay?.order_id && pay.status === 'captured') {
         const db = admin();
         const { data: order } = await db.from('orders').select('id, total, status').eq('razorpay_order_id', pay.order_id).maybeSingle();
+        // payment arrived for an order that expired or was cancelled: flag it so staff can refund
+        if (order && (order.status === 'expired' || order.status === 'cancelled') && pay.currency === 'INR' && Number(pay.amount) === Math.round(Number(order.total) * 100)) {
+          await db.from('orders').update({ payment_status: 'needs_refund', razorpay_payment_id: pay.id, paid_at: new Date().toISOString() }).eq('id', order.id).eq('payment_status', 'unpaid');
+        }
         // only confirm when the paid amount matches what the server priced
         if (order && order.status === 'awaiting_payment' && pay.currency === 'INR' && Number(pay.amount) === Math.round(Number(order.total) * 100)) {
           await db.from('orders').update({

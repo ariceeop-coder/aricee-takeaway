@@ -14,10 +14,13 @@ Deno.serve(async (req) => {
     const { order_id } = await req.json();
     const { data: order } = await db.from('orders').select('id, total, payment_status, razorpay_payment_id, order_no, brand').eq('id', String(order_id)).maybeSingle();
     if (!order) return json({ error: 'Order not found' }, 404);
-    if (order.payment_status !== 'paid' || !order.razorpay_payment_id) return json({ error: 'This order has no payment to refund' }, 400);
+    const { data: prof } = await db.from('profiles').select('role, outlet').eq('id', u.user.id).maybeSingle();
+    const allowed = prof && (prof.role === 'owner' || prof.outlet === (order.brand || 'Aricee'));
+    if (!allowed) return json({ error: 'Not allowed to refund this outlet' }, 403);
+    if (!['paid', 'needs_refund'].includes(order.payment_status) || !order.razorpay_payment_id) return json({ error: 'This order has no payment to refund' }, 400);
 
     // claim the refund first so a double tap cannot refund twice
-    const { data: claimed } = await db.from('orders').update({ payment_status: 'refunding' }).eq('id', order.id).eq('payment_status', 'paid').select('id');
+    const { data: claimed } = await db.from('orders').update({ payment_status: 'refunding' }).eq('id', order.id).eq('payment_status', order.payment_status).select('id');
     if (!claimed || claimed.length === 0) return json({ error: 'Refund already in progress' }, 409);
     try {
       const r = await razorpay('/payments/' + order.razorpay_payment_id + '/refund', {
@@ -27,7 +30,7 @@ Deno.serve(async (req) => {
       await db.from('orders').update({ payment_status: 'refunded', refund_id: r.id, refunded_at: new Date().toISOString() }).eq('id', order.id);
       return json({ ok: true, refund_id: r.id });
     } catch (e) {
-      await db.from('orders').update({ payment_status: 'paid' }).eq('id', order.id);   // let staff try again
+      await db.from('orders').update({ payment_status: order.payment_status }).eq('id', order.id);   // let staff try again
       throw e;
     }
   } catch (e) {

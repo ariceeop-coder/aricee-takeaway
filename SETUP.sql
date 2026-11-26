@@ -90,3 +90,12 @@ for each row execute function assign_outlet_order_no();
 
 -- one link, two outlets: profiles.outlet decides which staff page a login opens (null = either)
 alter table profiles add column if not exists outlet text check (outlet in ('Aricee','Harlur'));
+
+-- security hardening (applied live): outlet-scoped staff access, no public inserts, no browser access to place_order
+alter table orders add column if not exists client_ip text;
+create or replace function my_outlet() returns text language sql stable security definer set search_path=public as $$
+  select case when role='owner' then 'ALL' else coalesce(outlet,'NONE') end from profiles where id = auth.uid() $$;
+revoke execute on function my_outlet() from public, anon; grant execute on function my_outlet() to authenticated;
+drop policy if exists "customers can place orders" on orders;
+-- orders/bills policies: select/update/insert only when my_outlet()='ALL' or coalesce(brand,'Aricee')=my_outlet()
+revoke execute on function place_order(text, jsonb, numeric, numeric, numeric) from public, anon, authenticated;
