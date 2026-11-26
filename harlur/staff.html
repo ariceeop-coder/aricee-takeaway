@@ -2236,18 +2236,32 @@ function attachHandlers() {
 }
 
 /* ---------- auth ---------- */
+/* ---------- one link, two outlets: the login decides which outlet page opens ---------- */
+async function outletRedirect(session) {
+  try {
+    const { data } = await supa.from('profiles').select('outlet').eq('id', session.user.id).maybeSingle();
+    const want = data && data.outlet;
+    if (want && want !== OUTLET_BRAND) {
+      location.replace(want === 'Harlur' ? 'staff.html' : '../staff.html');
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
 async function initAuth() {
   const { data } = await supa.auth.getSession();
   state.session = data.session;
   state.authLoading = false;
   if (state.session) {
+    if (await outletRedirect(state.session)) return;
     await loadMenuFromSupabase();
     syncBills();
     subscribeOnlineOrders();
   }
   render();
-  supa.auth.onAuthStateChange((_event, session) => {
+  supa.auth.onAuthStateChange(async (_event, session) => {
     state.session = session;
+    if (session && await outletRedirect(session)) return;
     render();
     if (session) { loadMenuFromSupabase(); syncBills(); subscribeOnlineOrders(); }
   });

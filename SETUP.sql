@@ -87,3 +87,6 @@ end; $$;
 drop trigger if exists trg_assign_outlet_order_no on orders;
 create trigger trg_assign_outlet_order_no before insert on orders
 for each row execute function assign_outlet_order_no();
+
+-- one link, two outlets: profiles.outlet decides which staff page a login opens (null = either)
+alter table profiles add column if not exists outlet text check (outlet in ('Aricee','Harlur'));
