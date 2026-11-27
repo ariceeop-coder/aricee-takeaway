@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Policies · Aricee - The Indian Kitchen</title>
+<style>
+  :root { --accent:#FC8019; --bg:#F4F4F5; --surface:#fff; --text:#1C1C1C; --soft:#686B78; --line:#E9E9EB; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui,-apple-system,Segoe UI,Roboto,sans-serif; line-height:1.6; }
+  main { max-width:720px; margin:0 auto; background:var(--surface); min-height:100vh; padding:22px 18px 60px; }
+  h1 { font-size:22px; margin:0 0 4px; } h2 { font-size:18px; margin:34px 0 8px; padding-top:10px; border-top:1px solid var(--line); }
+  p, li { font-size:14.5px; } .soft { color:var(--soft); font-size:13px; }
+  a { color:var(--accent); } nav a { margin-right:14px; font-size:14px; }
+  .box { background:#FFF3E8; border-radius:12px; padding:12px 14px; }
+</style>
+</head>
+<body>
+<main>
+  <p><a href="./">← Back to menu</a></p>
+  <h1>Aricee - The Indian Kitchen</h1>
+  <p class="soft">Takeaway outlets: Electronic City Phase 1 and Harlur, Bengaluru · Open daily 11:00 AM – 11:00 PM</p>
+  <nav><a href="#contact">Contact</a><a href="#terms">Terms</a><a href="#privacy">Privacy</a><a href="#refunds">Refunds &amp; cancellation</a><a href="#delivery">Pickup</a></nav>
+
+  <h2 id="contact">Contact us</h2>
+  <div class="box" id="contact-box">Loading…</div>
+
+  <h2 id="terms">Terms &amp; conditions</h2>
+  <ul>
+    <li>Aricee - The Indian Kitchen sells freshly prepared food for <b>takeaway (self-pickup) only</b>. We do not deliver.</li>
+    <li>Orders can be placed between 11:00 AM and 11:00 PM (IST). Orders outside these hours are not accepted.</li>
+    <li>Prices are in Indian Rupees (INR) and are the prices shown on the menu page for the outlet you order from. Final prices are always calculated by our system when you place the order. Offers such as Happy Hour (4–7 PM, selected categories) apply automatically where shown.</li>
+    <li>You can pay online (UPI, cards, wallets, through Razorpay) or choose to pay at the counter when you collect your order.</li>
+    <li>An order is confirmed only once the outlet accepts it. We may cancel an order if an item is unavailable or the outlet is unable to prepare it; online payments for cancelled orders are refunded as described below.</li>
+    <li>Please collect your order from the outlet you ordered from, quoting your order number. Food is best eaten fresh.</li>
+    <li>Descriptions and photos are for guidance. Dishes may contain allergens (including dairy, nuts, soy, gluten, egg); please tell the outlet about any allergy before ordering.</li>
+    <li>We may update these terms from time to time. The version on this page applies.</li>
+  </ul>
+
+  <h2 id="privacy">Privacy policy</h2>
+  <ul>
+    <li><b>What we collect:</b> the items you order, the order time and total, any note you add, and your network (IP) address, which we use only to prevent spam and fake orders. We do not currently ask for your name, phone number or email.</li>
+    <li><b>Payments:</b> online payments are handled by Razorpay. Your card, UPI or wallet details are entered on Razorpay's secure window and are never seen or stored by us. We store only the payment reference and status needed to confirm or refund your order.</li>
+    <li><b>How we use it:</b> to prepare and bill your order, confirm payments, process refunds, and keep our systems secure. We do not sell your information.</li>
+    <li><b>Who sees it:</b> our outlet staff, our hosting and database providers (Supabase, GitHub Pages) and Razorpay, only as needed to run the service.</li>
+    <li><b>Retention:</b> order and billing records are kept as long as needed for accounting and legal purposes.</li>
+    <li>To ask about or request removal of your information, contact us using the details above.</li>
+  </ul>
+
+  <h2 id="refunds">Refund &amp; cancellation policy</h2>
+  <ul>
+    <li><b>Cancelled by us</b> (item unavailable, outlet closed, unable to prepare): an online payment is refunded in full to the original payment method. Refunds are started by the outlet and normally reach your account in <b>5–7 working days</b>, depending on your bank.</li>
+    <li><b>Cancellation by you:</b> because food is prepared fresh, please contact the outlet immediately after ordering. If preparation has not started, we will cancel and refund; once preparation has started, the order cannot be cancelled or refunded.</li>
+    <li><b>Wrong or unsatisfactory order:</b> tell the outlet at the time of collection, or contact us the same day, and we will make it right or refund the affected item at our discretion.</li>
+    <li><b>Failed payment:</b> if money is debited but your order is not confirmed, it is refunded automatically by Razorpay or by us, usually within 5–7 working days. Contact us if it is not.</li>
+    <li>Orders paid at the counter are paid at collection and are not subject to online refunds.</li>
+  </ul>
+
+  <h2 id="delivery">Shipping &amp; delivery</h2>
+  <p>We do not ship or deliver. All orders are for self-pickup from the outlet you order from.</p>
+
+  <p class="soft" style="margin-top:36px">Last updated: November 2026</p>
+</main>
+<script src="menu-extras.js"></script>
+<script>
+  // Contact details come from menu-extras.js ("business"), so they are edited in one place.
+  (function () {
+    var B = (window.MENU_EXTRAS && window.MENU_EXTRAS.business) || {};
+    var esc = function (s) { return String(s).replace(/[&<>"']/g, function (m) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]; }); };
+    var rows = [];
+    if (B.legalName) rows.push('<b>' + esc(B.legalName) + '</b>');
+    (B.outlets || []).forEach(function (o) { rows.push(esc(o.name) + ': ' + esc(o.address)); });
+    if (B.phone) rows.push('Phone: <a href="tel:' + esc(B.phone.replace(/\s/g, '')) + '">' + esc(B.phone) + '</a>');
+    if (B.email) rows.push('Email: <a href="mailto:' + esc(B.email) + '">' + esc(B.email) + '</a>');
+    document.getElementById('contact-box').innerHTML = rows.length ? rows.join('<br>') : 'Please contact the outlet directly.';
+  })();
+</script>
+</body>
+</html>
